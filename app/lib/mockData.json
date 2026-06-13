@@ -3,7 +3,7 @@
     {
       "id": "pequeno",
       "nome": "Pequeno",
-      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Pequeno",
+      "thumbPlaceholder": "/img/bases/pequeno.jpg",
       "descricao": "Ágil e rápido, mas frágil.",
       "atributos": {
         "poder": 2, "saber": 3, "casca": 3, "graca": 4,
@@ -15,7 +15,7 @@
     {
       "id": "medio",
       "nome": "Médio",
-      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Médio",
+      "thumbPlaceholder": "/img/bases/medio.jpg",
       "descricao": "Equilíbrio entre força e agilidade.",
       "atributos": {
         "poder": 3, "saber": 3, "casca": 3, "graca": 3,
@@ -27,7 +27,7 @@
     {
       "id": "grande",
       "nome": "Grande",
-      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Grande",
+      "thumbPlaceholder": "/img/bases/grande.jpg",
       "descricao": "Lento e resistente, causa medo.",
       "atributos": {
         "poder": 4, "saber": 3, "casca": 4, "graca": 2,

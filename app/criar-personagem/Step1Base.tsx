@@ -1,11 +1,5 @@
 import type { Base } from '@/app/lib/mockData'
 
-const BASE_ICONS: Record<string, string> = {
-  pequeno: '🦗',
-  medio:   '🪲',
-  grande:  '🦂',
-}
-
 const ATTR_LABELS: Array<[keyof Base['atributos'], string]> = [
   ['poder',      'Poder'],
   ['saber',      'Saber'],
@@ -66,21 +60,18 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                   : 'transparent',
               }} />
 
-              <div style={{ position: 'relative', aspectRatio: '2/1', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', aspectRatio: '1/1', overflow: 'hidden' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={base.thumbPlaceholder}
-                  alt={`${base.nome} — thumbnail disponível em breve`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  alt={`Ilustração da base ${base.nome}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
                 />
                 <div style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'linear-gradient(to bottom, transparent 40%, var(--hk-deep))',
+                  background: 'linear-gradient(to bottom, transparent 87%, var(--hk-deep))',
                 }} />
-                <span style={{ position: 'absolute', bottom: 8, left: 12, fontSize: '2rem' }} aria-hidden>
-                  {BASE_ICONS[base.id] ?? '🐛'}
-                </span>
               </div>
 
               <div style={{ padding: '1rem 1.25rem 1.5rem' }}>
