@@ -1,0 +1,383 @@
+{
+  "bases": [
+    {
+      "id": "pequeno",
+      "nome": "Pequeno",
+      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Pequeno",
+      "descricao": "Ágil e rápido, mas frágil.",
+      "atributos": {
+        "poder": 2, "saber": 3, "casca": 3, "graca": 4,
+        "coracao": 6, "estamina": 3, "alma": 3,
+        "velocidade": 7, "fomeInicial": -1, "fomeMaxima": 15,
+        "fofo": 1.5, "assustador": 1
+      }
+    },
+    {
+      "id": "medio",
+      "nome": "Médio",
+      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Médio",
+      "descricao": "Equilíbrio entre força e agilidade.",
+      "atributos": {
+        "poder": 3, "saber": 3, "casca": 3, "graca": 3,
+        "coracao": 7, "estamina": 3, "alma": 3,
+        "velocidade": 6, "fomeInicial": 4, "fomeMaxima": 20,
+        "fofo": 1, "assustador": 1.5
+      }
+    },
+    {
+      "id": "grande",
+      "nome": "Grande",
+      "thumbPlaceholder": "https://placehold.co/300x200?text=Base+Grande",
+      "descricao": "Lento e resistente, causa medo.",
+      "atributos": {
+        "poder": 4, "saber": 3, "casca": 4, "graca": 2,
+        "coracao": 8, "estamina": 3, "alma": 3,
+        "velocidade": 5, "fomeInicial": 9, "fomeMaxima": 25,
+        "fofo": 1, "assustador": 1.5
+      }
+    }
+  ],
+
+  "traçosAtributo": [
+    { "id": "poderoso", "nome": "Poderoso", "custoFome": 2, "maxVezes": 2, "descricao": "Excepcionalmente forte.", "efeito": "+0.5 Poder", "modificadores": { "poder": 0.5 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Poderoso" },
+    { "id": "gracioso", "nome": "Gracioso", "custoFome": 2, "maxVezes": 2, "descricao": "Excepcionalmente fino e ágil.", "efeito": "+0.5 Graça", "modificadores": { "graca": 0.5, "fofo": 0.5 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Gracioso" },
+    { "id": "duradouro", "nome": "Duradouro", "custoFome": 2, "maxVezes": 2, "descricao": "Resiliente e resistente.", "efeito": "+0.5 Casca", "modificadores": { "casca": 0.5 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Duradouro" },
+    { "id": "perspicaz", "nome": "Perspicaz", "custoFome": 2, "maxVezes": 2, "descricao": "Perceptivo e inteligente.", "efeito": "+0.5 Saber", "modificadores": { "saber": 0.5 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Perspicaz" },
+    { "id": "fragil", "nome": "Frágil", "custoFome": -3, "maxVezes": 2, "descricao": "Delicado, casca fina.", "efeito": "-1 Casca", "modificadores": { "casca": -1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Frágil" },
+    { "id": "fraco", "nome": "Fraco", "custoFome": -3, "maxVezes": 2, "descricao": "Pouca força física.", "efeito": "-1 Poder", "modificadores": { "poder": -1, "fofo": 0.5 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Fraco" },
+    { "id": "lindo", "nome": "Lindo", "custoFome": 1, "maxVezes": 2, "descricao": "Agradável aos sentidos.", "efeito": "+1 Fofo", "modificadores": { "fofo": 1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Lindo" },
+    { "id": "assustador_traco", "nome": "Assustador", "custoFome": 1, "maxVezes": 2, "descricao": "Desconfortante e ameaçador.", "efeito": "+1 Assustador", "modificadores": { "assustador": 1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Assustador" },
+    { "id": "lento", "nome": "Lento", "custoFome": -2, "maxVezes": 2, "descricao": "Mais devagar que a média.", "efeito": "-1 Velocidade", "modificadores": { "velocidade": -1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Lento" },
+    { "id": "agil", "nome": "Ágil", "custoFome": 2, "maxVezes": 2, "descricao": "Rápido e esperto.", "efeito": "+1 Velocidade", "modificadores": { "velocidade": 1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Ágil" },
+    { "id": "saudavel", "nome": "Saudável", "custoFome": 4, "descricao": "Raça excepcionalmente saudável.", "efeito": "+1 Coração máximo", "modificadores": { "coracao": 1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Saudável" },
+    { "id": "infermo", "nome": "Enfermo", "custoFome": -4, "descricao": "Dias de glória já passaram.", "efeito": "-1 Coração máximo", "modificadores": { "coracao": -1 }, "thumbPlaceholder": "https://placehold.co/100x100?text=Enfermo" }
+  ],
+
+  "traçosEspeciais": [
+    {
+      "id": "ferrao",
+      "nome": "Ferrão",
+      "custoFome": 3,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Ferrão",
+      "descricao": "Arma natural que causa 3 Dano ao Longo do Tempo (DoT). -2 para acertar se não estiver voando ou agarrando.",
+      "categoria": "Armas Naturais",
+      "modificadores": { "assustador": 0.5 },
+      "subTraços": [
+        { "id": "cauda_preensil", "nome": "Cauda Preênsil", "custoFome": 2, "descricao": "O ferrão fica na ponta de uma cauda, negando a penalidade de -2 para acertar.", "modificadores": { "assustador": 0.5 } }
+      ]
+    },
+    {
+      "id": "mandibulas_esmagadoras",
+      "nome": "Mandíbulas Esmagadoras",
+      "custoFome": 1,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Mandíbulas",
+      "descricao": "Arma natural de mordida que causa 2 de dano. Pode agarrar como se fosse um membro.",
+      "categoria": "Armas Naturais",
+      "modificadores": { "assustador": 0.5 },
+      "subTraços": [
+        { "id": "mandibulas_extralargas", "nome": "Mandíbulas Extra-largas", "custoFome": 2, "descricao": "Dano 3 em vez de 2, +2 para agarrar. Peso 1.", "modificadores": { "assustador": 0.5, "fofo": -0.5 } }
+      ]
+    },
+    {
+      "id": "projetil_natural",
+      "nome": "Projétil Natural",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Projétil",
+      "descricao": "Dispara um projétil do corpo. Dano 2, alcance 4. Tipo: Funda.",
+      "categoria": "Armas Naturais",
+      "subTraços": [
+        { "id": "tiro_debilitante", "nome": "Tiro Debilitante", "custoFome": 0, "descricao": "Reduz um atributo primário, barra ou velocidade em 1 (Casca reduz)." },
+        { "id": "fluidos", "nome": "Fluidos", "custoFome": 2, "descricao": "Aplica efeito de frasco comum no lugar do dano." },
+        { "id": "tiro_pesado", "nome": "Tiro Pesado", "custoFome": 0, "descricao": "+1 de dano, considerado arma pesada." }
+      ]
+    },
+    {
+      "id": "garras_afiadas",
+      "nome": "Garras Afiadas",
+      "custoFome": 1,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Garras",
+      "descricao": "As pontas dos dedos têm garras que causam 1 de dano, podem ser usadas em conjunto com outra arma (+1 de dano base).",
+      "categoria": "Armas Naturais"
+    },
+    {
+      "id": "batida",
+      "nome": "Batida",
+      "custoFome": "1/2/3 (pequeno/médio/grande)",
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Batida",
+      "descricao": "Ataque de carga que causa 2/3/4 de dano. -2 para aparar. Médio tem Peso 1, Grande é pesada.",
+      "categoria": "Armas Naturais"
+    },
+    {
+      "id": "espinhos",
+      "nome": "Espinhos",
+      "custoFome": 3,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Espinhos",
+      "descricao": "Corpo coberto de espinhos. Arma natural 2 de dano. Atacantes corpo a corpo sofrem dano amortecível igual à Estamina gasta.",
+      "categoria": "Defesa",
+      "modificadores": { "assustador": 0.5 }
+    },
+    {
+      "id": "voo_inferior",
+      "nome": "Voo Inferior",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Voo",
+      "descricao": "Pode voar gastando 1 Estamina por movimento. Deve pousar ao fim do turno ou gastar 1 Estamina para flutuar.",
+      "categoria": "Movimento",
+      "subTraços": [
+        { "id": "aereo", "nome": "Aéreo", "custoFome": 0, "descricao": "Especializado em voo. Velocidade em solo -2, velocidade de voo +2." },
+        { "id": "voo_completo", "nome": "Voo", "custoFome": 4, "descricao": "Pode permanecer no ar; Estamina não regenera até pousar." }
+      ]
+    },
+    {
+      "id": "escalada",
+      "nome": "Escalada",
+      "custoFome": 2,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Escalada",
+      "descricao": "Pode se mover na velocidade máxima enquanto escala, inclusive tetos.",
+      "categoria": "Movimento"
+    },
+    {
+      "id": "salto",
+      "nome": "Salto",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Salto",
+      "descricao": "Uma vez por rodada, gasta 3 Estamina para saltar até 10 quadrados. Pode ser usado no lugar da esquiva.",
+      "categoria": "Movimento"
+    },
+    {
+      "id": "visao_noturna",
+      "nome": "Visão Noturna",
+      "custoFome": 2,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Visão+Noturna",
+      "descricao": "Enxerga na escuridão como se estivesse iluminado. Olhos brilham fracamente.",
+      "categoria": "Sentidos",
+      "modificadores": { "assustador": 0.5 }
+    },
+    {
+      "id": "faro",
+      "nome": "Faro",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Faro",
+      "descricao": "Pode 'ver' pelo olfato. Enxerga no escuro, mas coisas fedorentas atrapalham.",
+      "categoria": "Sentidos"
+    },
+    {
+      "id": "senso_tremor",
+      "nome": "Senso de Tremor",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Tremor",
+      "descricao": "Vê através do solo/paredes enquanto em contato. Insetos aéreos têm -2 para acertar.",
+      "categoria": "Sentidos"
+    },
+    {
+      "id": "corpo_macio",
+      "nome": "Corpo Macio",
+      "custoFome": 0,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Corpo+Macio",
+      "descricao": "Não tem exoesqueleto. Não pode usar Casca para amortecer, mas +4 Coração. Cura +2 Corações por descanso.",
+      "categoria": "Fisiológicos",
+      "modificadores": { "assustador": 0.5, "fofo": 0.5, "coracao": 4 },
+      "subTraços": [
+        { "id": "concha_externa", "nome": "Concha Externa", "custoFome": 5, "descricao": "Pode recuar para uma concha com Absorção igual à Casca base." }
+      ]
+    },
+    {
+      "id": "sanguessuga",
+      "nome": "Sanguessuga",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Sanguessuga",
+      "descricao": "Pode sugar sangue com mordida (0 de dano) para ganhar 5 Bucho, alvo perde 10.",
+      "categoria": "Fisiológicos"
+    },
+    {
+      "id": "braços_extras",
+      "nome": "Braços Extras",
+      "custoFome": 4,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Braços+Extras",
+      "descricao": "Um par extra de braços igualmente funcionais.",
+      "categoria": "Corporais"
+    },
+    {
+      "id": "sem_braco",
+      "nome": "Sem Braço",
+      "custoFome": -10,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Sem+Braço",
+      "descricao": "Não tem braços. Não pode segurar armas ou escudos. Tarefas manuais muito difíceis.",
+      "categoria": "Corporais"
+    },
+    {
+      "id": "camuflagem",
+      "nome": "Camuflagem",
+      "custoFome": 1,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Camuflagem",
+      "descricao": "+2 em Furtividade em um tipo de terreno (ex: floresta, deserto).",
+      "categoria": "Defesa"
+    },
+    {
+      "id": "venenoso",
+      "nome": "Venenoso",
+      "custoFome": 3,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Venenoso",
+      "descricao": "Corpo tóxico. Mordedores sofrem DoT 1. Carne não comestível (dano por Bucho).",
+      "categoria": "Defesa"
+    },
+    {
+      "id": "pelugem_palida",
+      "nome": "Pelugem Pálida",
+      "custoFome": 3,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Pelugem+Pálida",
+      "descricao": "Recupera 1 Alma por descanso. Sente presença de espíritos/magia poderosa.",
+      "categoria": "Místicos",
+      "modificadores": { "fofo": 0.5 }
+    },
+    {
+      "id": "musica",
+      "nome": "Música",
+      "custoFome": 1,
+      "thumbPlaceholder": "https://placehold.co/100x100?text=Música",
+      "descricao": "Cria melodia calmante (+1 Fofo) ou arrepiante (+1 Assustador) para testes sociais.",
+      "categoria": "Outros"
+    }
+  ],
+
+  "trilhas": [
+    {
+      "id": "ferrao_trilha",
+      "nome": "Ferrão",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Ferrão",
+      "nivel": 1,
+      "beneficios": "Quebra-Guarda: 4s contam como sucessos contra oponentes que você já causou dano.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "agulha_trilha",
+      "nome": "Agulha",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Agulha",
+      "beneficios": "Ataques Rápidos: usa Graça para atacar corpo a corpo (exceto Peso 2+). Estocada Afiada: -1 para +1 alcance.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "presa_trilha",
+      "nome": "Presa",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Presa",
+      "beneficios": "Ataque Poderoso: gastando 3+ Estamina, causa +1 de dano (+2 se arma pesada).",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "gancho_trilha",
+      "nome": "Gancho",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Gancho",
+      "beneficios": "Foice Sutil: usa Graça para ataques corpo a corpo. Puxar/Empurrar: -1 dano para mover alvo 1 quadrado. Bolsa de Truques: +1 Estoque e duas receitas de armadilha.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "casca_trilha",
+      "nome": "Casca",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Casca",
+      "beneficios": "Golpes de Relance: 4s contam como sucessos ao amortecer após aparar. Olhar Aguçado: primeiro ataque de oportunidade da rodada grátis.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "funda_trilha",
+      "nome": "Funda",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Funda",
+      "beneficios": "Bom Braço: usa Poder ao invés de Graça para ataques à distância. Tiro Longo: dobra alcance com -1 por quadrado extra.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "frasco_trilha",
+      "nome": "Frasco",
+      "tipo": "marcial",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Frasco",
+      "beneficios": "Arremesso Fácil: arremessar frascos não custa Estamina. Guerrilha Química: +1 Estoque, 3 receitas de frasco.",
+      "barraAumentada": "Estamina",
+      "aumento": 1
+    },
+    {
+      "id": "espira_trilha",
+      "nome": "Espira",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Espira",
+      "beneficios": "Totem de Alma: pode criar totem que armazena Alma. Conjuração Arcana: focos arcanos são armas enfeitiçadas.",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "manto_trilha",
+      "nome": "Manto",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Manto",
+      "beneficios": "Rasante: ação de pulo/avanço grátis uma vez por rodada. Pode fazer no ar.",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "sonho_trilha",
+      "nome": "Sonho",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Sonho",
+      "beneficios": "Ferrão dos Sonhos: arma mágica (dano 3 a espíritos). Dreno de Essência: ganha 1 Alma e 1 Essência ao acertar (uma vez por alvo por descanso). Barra de Essência (5).",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "pesadelo_trilha",
+      "nome": "Pesadelo",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Pesadelo",
+      "beneficios": "Portador da Chama: aura de calor, Essência. Brasas Acorrentadas: ganha Essência ao matar adjacente. Transfixo: pode gastar Essência para +1 em ataque/defesa.",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "flor_trilha",
+      "nome": "Flor",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Flor",
+      "beneficios": "Broto da Vida: +0.5 Fofo, cultiva plantas. Renascimento de Alma: pode curar aliados com Foco.",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "espinho_trilha",
+      "nome": "Espinho",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Espinho",
+      "beneficios": "Lâminas Envenenadas: gera Estoque de Glória para venenos. Poção de Bruxa: +1 Estoque, 2 receitas de veneno.",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    },
+    {
+      "id": "po_trilha",
+      "nome": "Pó",
+      "tipo": "mistico",
+      "thumbPlaceholder": "https://placehold.co/200x150?text=Trilha+Pó",
+      "beneficios": "O Esvaziamento: ritual para criar Secos. Armada de Pó: controla Secos (até nível em Pó).",
+      "barraAumentada": "Alma",
+      "aumento": 1
+    }
+  ],
+
+  "periciasExemplo": [
+    { "id": "atletismo", "nome": "Atletismo", "descricao": "Escalar, nadar, levantar pesos." },
+    { "id": "furtividade", "nome": "Furtividade", "descricao": "Esconder-se, mover-se silenciosamente." },
+    { "id": "percepcao", "nome": "Percepção", "descricao": "Notar detalhes, procurar pistas." },
+    { "id": "persuasaio", "nome": "Persuasão", "descricao": "Convencer outros com razão." },
+    { "id": "enganacao", "nome": "Enganação", "descricao": "Mentir, disfarçar, enganar." },
+    { "id": "medicina", "nome": "Medicina", "descricao": "Curar ferimentos, diagnosticar doenças." },
+    { "id": "sobrevivencia", "nome": "Sobrevivência", "descricao": "Achar comida, rastrear, se orientar." },
+    { "id": "manutencao", "nome": "Manutenção", "descricao": "Consertar armas, armaduras, ferramentas." }
+  ]
+}
