@@ -1,0 +1,506 @@
+@import "tailwindcss";
+
+:root {
+  /* ── Dark void palette ── */
+  --hk-void:       #08090f;
+  --hk-abyss:      #0b0d18;
+  --hk-deep:       #0f1222;
+  --hk-dark:       #181d30;
+  --hk-mid:        #222a42;
+  --hk-blue:       #4a9eff;
+
+  /* Soul blue — luminous on dark */
+  --hk-soul:       #4a9eff;
+  --hk-soul-light: #6ab5ff;
+  --hk-soul-pale:  #a0ceff;
+  --hk-ghost:      #e8f0ff;
+
+  /* Gold — warm amber, glowing */
+  --hk-gold:       #d4a843;
+  --hk-gold-light: #e8c060;
+  --hk-pale:       #d8e4f8;
+  --hk-dim:        #7a8aaa;
+
+  --background: var(--hk-void);
+  --foreground: var(--hk-pale);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans:      var(--font-cinzel);
+  --font-display:   var(--font-cinzel-decorative);
+  --font-body:      var(--font-im-fell);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--hk-void);
+  color: var(--hk-pale);
+  font-family: var(--font-im-fell), "Georgia", serif;
+  color-scheme: dark;
+}
+
+/* Soul glow effect — luminous on dark bg */
+.soul-glow {
+  text-shadow:
+    0 0 6px  rgba(74, 158, 255, 0.9),
+    0 0 20px rgba(74, 158, 255, 0.55),
+    0 0 45px rgba(74, 158, 255, 0.25);
+}
+
+.gold-glow {
+  text-shadow:
+    0 0 5px  rgba(212, 168, 67, 0.9),
+    0 0 18px rgba(212, 168, 67, 0.5),
+    0 0 38px rgba(212, 168, 67, 0.2);
+}
+
+/* HK ornamental divider */
+.hk-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--hk-gold);
+  opacity: 0.6;
+}
+
+.hk-divider::before,
+.hk-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to var(--dir, right), transparent, var(--hk-gold));
+}
+
+.hk-divider::after {
+  --dir: left;
+}
+
+/* Soul border */
+.soul-border {
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  box-shadow:
+    inset 0 0 12px rgba(74, 158, 255, 0.06),
+    0 1px 6px rgba(74, 158, 255, 0.12);
+}
+
+/* Void card bg */
+.void-card {
+  background: linear-gradient(135deg, var(--hk-deep) 0%, var(--hk-abyss) 100%);
+}
+
+/* Animated soul particles */
+@keyframes float-up {
+  0%   { transform: translateY(0)    scale(1);    opacity: 1; }
+  60%  { transform: translateY(-120px) scale(0.85); opacity: 0.9; }
+  100% { transform: translateY(-220px) scale(0.3);  opacity: 0; }
+}
+
+.particle {
+  animation: float-up ease-in infinite;
+  filter: blur(0.4px);
+}
+
+/* Button base */
+.hk-btn {
+  font-family: var(--font-cinzel), serif;
+  letter-spacing: 0.1em;
+  border: 1px solid;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.hk-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.25), transparent);
+  pointer-events: none;
+}
+
+.hk-btn-soul {
+  background: rgba(74, 158, 255, 0.1);
+  border-color: rgba(74, 158, 255, 0.45);
+  color: var(--hk-soul-pale);
+  box-shadow: 0 1px 6px rgba(74, 158, 255, 0.2);
+}
+
+.hk-btn-soul:hover {
+  background: rgba(74, 158, 255, 0.2);
+  border-color: rgba(74, 158, 255, 0.8);
+  box-shadow: 0 2px 14px rgba(74, 158, 255, 0.4);
+  color: var(--hk-soul-light);
+}
+
+.hk-btn-gold {
+  background: rgba(212, 168, 67, 0.1);
+  border-color: rgba(212, 168, 67, 0.45);
+  color: var(--hk-gold);
+  box-shadow: 0 1px 6px rgba(212, 168, 67, 0.15);
+}
+
+.hk-btn-gold:hover {
+  background: rgba(212, 168, 67, 0.2);
+  border-color: rgba(212, 168, 67, 0.8);
+  box-shadow: 0 2px 14px rgba(212, 168, 67, 0.3);
+  color: var(--hk-gold-light);
+}
+
+/* ═══ Manuscript & Parchment effects ════════════════════════════════════ */
+
+/* Paper grain via SVG feTurbulence — filter defined inline in page.tsx */
+.grain {
+  filter: url(#paper-grain);
+}
+
+/* Dark void panel surface */
+.parchment {
+  background:
+    linear-gradient(160deg,
+      rgba(15, 18, 34, 0.92) 0%,
+      rgba(11, 13, 24, 0.95) 50%,
+      rgba(15, 18, 34, 0.92) 100%
+    ) !important;
+  border-color: rgba(74, 158, 255, 0.15) !important;
+  box-shadow:
+    inset 0 0 40px rgba(74, 158, 255, 0.03),
+    0 2px 12px rgba(0, 0, 0, 0.4) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Parchment top-highlight seam */
+.parchment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(74, 158, 255, 0.3), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Subtle ruled lines like old paper */
+.manuscript-ruled {
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 1.65rem,
+      rgba(100, 70, 20, 0.12) 1.65rem,
+      rgba(100, 70, 20, 0.12) calc(1.65rem + 1px)
+    );
+}
+
+/* Folded corner (top-right) */
+.ink-fold {
+  position: relative;
+}
+.ink-fold::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 28px 28px 0;
+  border-color: transparent rgba(212, 168, 67, 0.5) transparent transparent;
+  pointer-events: none;
+  z-index: 2;
+  transition: border-color 0.25s;
+  filter: drop-shadow(-2px 2px 3px rgba(0,0,0,0.5));
+}
+.ink-fold:hover::after {
+  border-color: transparent rgba(240, 192, 80, 0.85) transparent transparent;
+}
+
+/* Soul shimmer spot — faint blue on void */
+.ink-spot {
+  position: absolute;
+  border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  background: radial-gradient(ellipse at 38% 32%,
+    rgba(74, 158, 255, 0.06) 0%,
+    rgba(18, 85, 168, 0.03) 45%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+/* Wax seal */
+.wax-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c02828, #7a0e0e);
+  border: 1px solid rgba(180, 60, 60, 0.5);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.25),
+    0 0 16px rgba(160, 32, 32, 0.25),
+    inset 0 1px 4px rgba(255, 180, 180, 0.2);
+}
+
+/* Ink-style body text */
+.ink-body {
+  font-family: var(--font-im-fell), 'Georgia', serif;
+  font-style: italic;
+  color: rgba(216, 228, 248, 0.65);
+  line-height: 1.85;
+  letter-spacing: 0.015em;
+}
+
+/* Torn-paper divider (used on an <hr> or <div>) */
+.torn-edge {
+  width: 100%;
+  height: 28px;
+  overflow: hidden;
+  line-height: 0;
+  pointer-events: none;
+}
+
+/* ─── DnD Beyond hybrid classes ─────────────────────────── */
+
+/* Sticky topbar */
+.ddb-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(8, 9, 15, 0.94);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Nav links in topbar */
+.ddb-nav-link {
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(216, 228, 248, 0.5);
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  white-space: nowrap;
+}
+
+.ddb-nav-link:hover {
+  color: var(--hk-soul-pale);
+  background: rgba(74, 158, 255, 0.08);
+}
+
+.ddb-nav-link.active {
+  color: var(--hk-gold);
+  border-bottom: 2px solid var(--hk-gold);
+}
+
+/* Section title */
+.ddb-section-title {
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--hk-gold);
+  text-shadow: 0 0 8px rgba(212, 168, 67, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(140, 96, 16, 0.25);
+  margin-bottom: 1rem;
+}
+
+.ddb-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(212, 168, 67, 0.3), transparent);
+}
+
+/* Content panel / card */
+.ddb-panel {
+  background: linear-gradient(160deg, rgba(15, 18, 34, 0.88) 0%, rgba(11, 13, 24, 0.92) 100%);
+  border: 1px solid rgba(74, 158, 255, 0.12);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ddb-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(74, 158, 255, 0.35), transparent);
+}
+
+/* Quick action card */
+.ddb-action-card {
+  background: linear-gradient(160deg, rgba(15, 18, 34, 0.88) 0%, rgba(11, 13, 24, 0.92) 100%);
+  border: 1px solid rgba(74, 158, 255, 0.12);
+  border-radius: 6px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.ddb-action-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(74, 158, 255, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.ddb-action-card:hover {
+  border-color: rgba(74, 158, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(74, 158, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.ddb-action-card:hover::before {
+  opacity: 1;
+}
+
+.ddb-action-card.gold-accent:hover {
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow: 0 4px 20px rgba(212, 168, 67, 0.15);
+}
+
+.ddb-action-card.gold-accent::before {
+  background: linear-gradient(to right, transparent, rgba(212, 168, 67, 0.5), transparent);
+}
+
+/* Character list item */
+.ddb-char-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ddb-char-row:hover {
+  background: rgba(74, 158, 255, 0.06);
+  border-color: rgba(74, 158, 255, 0.2);
+}
+
+.ddb-char-row + .ddb-char-row {
+  border-top: 1px solid rgba(74, 158, 255, 0.08);
+}
+
+/* Badge */
+.ddb-badge {
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.ddb-badge-soul {
+  color: var(--hk-soul-pale);
+  border-color: rgba(74, 158, 255, 0.35);
+  background: rgba(74, 158, 255, 0.08);
+}
+
+.ddb-badge-gold {
+  color: var(--hk-gold);
+  border-color: rgba(212, 168, 67, 0.35);
+  background: rgba(212, 168, 67, 0.08);
+}
+
+.ddb-badge-dim {
+  color: var(--hk-dim);
+  border-color: rgba(122, 138, 170, 0.3);
+  background: rgba(122, 138, 170, 0.06);
+}
+
+/* Sidebar activity feed item */
+.ddb-feed-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.08);
+  font-family: var(--font-im-fell), serif;
+  font-size: 0.9rem;
+  color: rgba(216, 228, 248, 0.55);
+  line-height: 1.5;
+}
+
+.ddb-feed-item:last-child {
+  border-bottom: none;
+}
+
+/* Search box */
+.ddb-search {
+  background: rgba(8, 9, 15, 0.8);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 4px;
+  color: var(--hk-pale);
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ddb-search::placeholder {
+  color: var(--hk-dim);
+}
+
+.ddb-search:focus {
+  border-color: rgba(74, 158, 255, 0.5);
+  box-shadow: 0 0 8px rgba(74, 158, 255, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────── */
+
+/* Image placeholder frame */
+.hk-frame {
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  background: linear-gradient(135deg, #0f1222 0%, #0b0d18 100%);
+  position: relative;
+}
+
+.hk-frame::before,
+.hk-frame::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--hk-gold);
+  border-style: solid;
+  opacity: 0.7;
+}
+
+.hk-frame::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+}
+
+.hk-frame::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+}
