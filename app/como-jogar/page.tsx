@@ -288,12 +288,8 @@ export default function ComoJogarPage() {
 
         {/* Layout: sidebar + content */}
         <div
-          className="max-w-7xl mx-auto px-4 sm:px-6"
+          className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-[220px_1fr] grid-cols-1 gap-10 items-start"
           style={{
-            display: 'grid',
-            gridTemplateColumns: '220px 1fr',
-            gap: '2.5rem',
-            alignItems: 'start',
             paddingTop: '2.5rem',
             paddingBottom: '4rem',
           }}
