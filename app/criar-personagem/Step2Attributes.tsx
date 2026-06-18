@@ -38,7 +38,7 @@ function fmtAttr(v: number) {
 
 function FomeBar({ fomeGasta, fomeMax }: { fomeGasta: number; fomeMax: number }) {
   const pct = Math.max(0, Math.min(100, (fomeGasta / fomeMax) * 100))
-  const color = pct >= 90 ? '#e05050' : pct >= 70 ? '#d4a843' : '#4a9eff'
+  const color = pct >= 90 ? 'var(--error)' : pct >= 70 ? 'var(--warning)' : 'var(--gold)'
   return (
     <div className="flex flex-col gap-1.5 flex-1">
       <div className="flex items-center justify-between">
@@ -47,7 +47,7 @@ function FomeBar({ fomeGasta, fomeMax }: { fomeGasta: number; fomeMax: number })
           fontSize: '0.6rem',
           letterSpacing: '0.15em',
           textTransform: 'uppercase',
-          color: 'var(--hk-dim)',
+          color: 'var(--text-muted)',
         }}>
           Fome
         </span>
@@ -55,7 +55,7 @@ function FomeBar({ fomeGasta, fomeMax }: { fomeGasta: number; fomeMax: number })
           {fomeGasta} / {fomeMax}
         </span>
       </div>
-      <div style={{ height: 6, background: 'rgba(74,158,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ height: 6, background: 'rgba(var(--gold-rgb),0.1)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{
           height: '100%',
           width: `${pct}%`,
@@ -76,8 +76,8 @@ export default function Step2Attributes({
       {/* Status bar */}
       <div className="flex items-center gap-4" style={{
         padding: '1rem 1.25rem',
-        background: 'var(--hk-deep)',
-        border: '1px solid rgba(74,158,255,0.1)',
+        background: 'var(--card)',
+        border: '1px solid rgba(var(--gold-rgb),0.1)',
         borderRadius: 8,
       }}>
         <FomeBar fomeGasta={fomeGasta} fomeMax={fomeMax} />
@@ -85,14 +85,14 @@ export default function Step2Attributes({
           flexShrink: 0,
           textAlign: 'center',
           paddingLeft: '1rem',
-          borderLeft: '1px solid rgba(74,158,255,0.1)',
+          borderLeft: '1px solid rgba(var(--gold-rgb),0.1)',
         }}>
           <span style={{
             fontFamily: 'var(--font-cinzel)',
             fontSize: '0.55rem',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            color: 'var(--hk-dim)',
+            color: 'var(--text-muted)',
             display: 'block',
             marginBottom: '0.2rem',
           }}>
@@ -102,10 +102,10 @@ export default function Step2Attributes({
             fontFamily: 'var(--font-cinzel)',
             fontSize: '1.1rem',
             fontWeight: 700,
-            color: totalTracos >= MAX_TRACOS ? '#e05050' : 'var(--hk-soul-pale)',
+            color: totalTracos >= MAX_TRACOS ? 'var(--error)' : 'var(--text)',
           }}>
             {totalTracos}
-            <span style={{ fontSize: '0.65rem', color: 'var(--hk-dim)', fontWeight: 400 }}> / {MAX_TRACOS}</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}> / {MAX_TRACOS}</span>
           </span>
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function Step2Attributes({
             fontSize: '0.65rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'var(--hk-gold)',
+            color: 'var(--gold)',
           }}>
             Atributos — {base.nome}
           </h3>
@@ -130,7 +130,7 @@ export default function Step2Attributes({
               fontSize: '0.52rem',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              color: 'var(--hk-dim)',
+              color: 'var(--text-muted)',
               marginBottom: '0.5rem',
             }}>
               Primários
@@ -139,8 +139,8 @@ export default function Step2Attributes({
               {PRIMARY_ATTRS.map(([key, label]) => (
                 <div key={key} style={{
                   padding: '0.75rem',
-                  background: 'var(--hk-abyss)',
-                  border: '1px solid rgba(74,158,255,0.15)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid rgba(var(--gold-rgb),0.15)',
                   borderRadius: 6,
                   textAlign: 'center',
                 }}>
@@ -148,7 +148,7 @@ export default function Step2Attributes({
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '1.4rem',
                     fontWeight: 700,
-                    color: 'var(--hk-soul-pale)',
+                    color: 'var(--text)',
                     lineHeight: 1,
                   }}>
                     {fmtAttr(atributos[key] as number)}
@@ -158,7 +158,7 @@ export default function Step2Attributes({
                     fontSize: '0.5rem',
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
-                    color: 'var(--hk-dim)',
+                    color: 'var(--text-muted)',
                     marginTop: '0.35rem',
                   }}>
                     {label}
@@ -175,7 +175,7 @@ export default function Step2Attributes({
               fontSize: '0.52rem',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              color: 'var(--hk-dim)',
+              color: 'var(--text-muted)',
               marginBottom: '0.5rem',
             }}>
               Sociais
@@ -184,8 +184,8 @@ export default function Step2Attributes({
               {SOCIAL_ATTRS.map(([key, label, icon]) => (
                 <div key={key} style={{
                   padding: '0.75rem',
-                  background: 'var(--hk-abyss)',
-                  border: '1px solid rgba(74,158,255,0.1)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid rgba(var(--gold-rgb),0.1)',
                   borderRadius: 6,
                   textAlign: 'center',
                 }}>
@@ -193,7 +193,7 @@ export default function Step2Attributes({
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '1.4rem',
                     fontWeight: 700,
-                    color: 'var(--hk-soul-pale)',
+                    color: 'var(--text)',
                     lineHeight: 1,
                   }}>
                     {fmtAttr(atributos[key] as number)}
@@ -203,7 +203,7 @@ export default function Step2Attributes({
                     fontSize: '0.5rem',
                     letterSpacing: '0.12em',
                     textTransform: 'uppercase',
-                    color: 'var(--hk-dim)',
+                    color: 'var(--text-muted)',
                     marginTop: '0.35rem',
                   }}>
                     {icon} {label}
@@ -215,7 +215,7 @@ export default function Step2Attributes({
               fontFamily: 'var(--font-im-fell)',
               fontStyle: 'italic',
               fontSize: '0.7rem',
-              color: 'rgba(216,228,248,0.28)',
+              color: 'rgba(var(--text-rgb),0.28)',
               marginTop: '0.4rem',
               lineHeight: 1.5,
             }}>
@@ -230,7 +230,7 @@ export default function Step2Attributes({
               fontSize: '0.52rem',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              color: 'var(--hk-dim)',
+              color: 'var(--text-muted)',
               marginBottom: '0.5rem',
             }}>
               Secundários
@@ -239,8 +239,8 @@ export default function Step2Attributes({
               {SECONDARY_ATTRS.map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between" style={{
                   padding: '0.4rem 0.65rem',
-                  background: 'rgba(74,158,255,0.04)',
-                  border: '1px solid rgba(74,158,255,0.08)',
+                  background: 'rgba(var(--gold-rgb),0.04)',
+                  border: '1px solid rgba(var(--gold-rgb),0.08)',
                   borderRadius: 4,
                 }}>
                   <span style={{
@@ -248,7 +248,7 @@ export default function Step2Attributes({
                     fontSize: '0.48rem',
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
-                    color: 'var(--hk-dim)',
+                    color: 'var(--text-muted)',
                   }}>
                     {label}
                   </span>
@@ -256,7 +256,7 @@ export default function Step2Attributes({
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '0.8rem',
                     fontWeight: 600,
-                    color: 'rgba(216,228,248,0.6)',
+                    color: 'rgba(var(--text-rgb),0.6)',
                   }}>
                     {atributos[key]}
                   </span>
@@ -273,7 +273,7 @@ export default function Step2Attributes({
             fontSize: '0.65rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'var(--hk-gold)',
+            color: 'var(--gold)',
           }}>
             Traços de Atributo
           </h3>
@@ -290,12 +290,10 @@ export default function Step2Attributes({
             return (
               <div
                 key={traco.id}
+                className={`card ${count > 0 ? 'card--selected' : ''}`}
                 style={{
                   padding: '0.875rem 1rem',
-                  background: count > 0 ? 'rgba(74,158,255,0.05)' : 'var(--hk-deep)',
-                  border: count > 0
-                    ? '1px solid rgba(74,158,255,0.22)'
-                    : '1px solid rgba(74,158,255,0.09)',
+                  background: count > 0 ? undefined : 'var(--card)',
                   borderRadius: 8,
                   transition: 'all 0.2s',
                 }}
@@ -304,14 +302,14 @@ export default function Step2Attributes({
                   {/* Thumbnail */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="https://placehold.co/48x48/0b0d18/4a9eff?text=Em+Breve"
+                    src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
                     alt={`${traco.nome} — thumbnail disponível em breve`}
                     style={{
                       width: 44,
                       height: 44,
                       borderRadius: 4,
                       objectFit: 'cover',
-                      border: '1px solid rgba(74,158,255,0.12)',
+                      border: '1px solid rgba(var(--gold-rgb),0.12)',
                       flexShrink: 0,
                     }}
                   />
@@ -322,16 +320,11 @@ export default function Step2Attributes({
                         fontFamily: 'var(--font-cinzel)',
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        color: count > 0 ? 'var(--hk-soul-pale)' : 'var(--hk-pale)',
+                        color: count > 0 ? 'var(--gold-light)' : 'var(--text)',
                       }}>
                         {traco.nome}
                       </span>
-                      <span className="ddb-badge" style={{
-                        fontSize: '0.5rem',
-                        color: isNegative ? '#6ab55a' : 'var(--hk-gold)',
-                        borderColor: isNegative ? 'rgba(106,181,90,0.35)' : 'rgba(212,168,67,0.35)',
-                        background: isNegative ? 'rgba(106,181,90,0.08)' : 'rgba(212,168,67,0.08)',
-                      }}>
+                      <span className={`badge ${isNegative ? 'badge--success' : 'badge--gold'}`} style={{ fontSize: '0.5rem' }}>
                         {isNegative ? '' : '+'}{traco.custoFome} Fome
                       </span>
                       {traco.maxVezes > 1 && (
@@ -344,7 +337,7 @@ export default function Step2Attributes({
                       fontFamily: 'var(--font-im-fell)',
                       fontStyle: 'italic',
                       fontSize: '0.8rem',
-                      color: 'rgba(216,228,248,0.42)',
+                      color: 'rgba(var(--text-rgb),0.42)',
                       marginTop: '0.25rem',
                     }}>
                       {traco.efeito}
@@ -356,16 +349,13 @@ export default function Step2Attributes({
                     <button
                       onClick={() => onRemove(traco.id)}
                       disabled={!canRemove}
+                      className="counter-btn counter-btn--dec"
                       style={{
                         width: 26, height: 26,
-                        border: '1px solid rgba(74,158,255,0.3)',
-                        borderRadius: 4,
-                        background: 'rgba(74,158,255,0.08)',
-                        color: 'var(--hk-soul-pale)',
+                        color: 'var(--gold-light)',
                         fontSize: '1rem',
                         lineHeight: 1,
                         cursor: canRemove ? 'pointer' : 'not-allowed',
-                        opacity: canRemove ? 1 : 0.25,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -377,7 +367,7 @@ export default function Step2Attributes({
                       fontFamily: 'var(--font-cinzel)',
                       fontSize: '0.85rem',
                       fontWeight: 700,
-                      color: count > 0 ? 'var(--hk-soul-pale)' : 'var(--hk-dim)',
+                      color: count > 0 ? 'var(--gold-light)' : 'var(--text-muted)',
                       minWidth: 16,
                       textAlign: 'center',
                     }}>
@@ -386,16 +376,13 @@ export default function Step2Attributes({
                     <button
                       onClick={() => onAdd(traco.id)}
                       disabled={!canAdd}
+                      className="counter-btn counter-btn--inc"
                       style={{
                         width: 26, height: 26,
-                        border: '1px solid rgba(212,168,67,0.35)',
-                        borderRadius: 4,
-                        background: 'rgba(212,168,67,0.08)',
-                        color: 'var(--hk-gold)',
+                        color: 'var(--gold)',
                         fontSize: '1rem',
                         lineHeight: 1,
                         cursor: canAdd ? 'pointer' : 'not-allowed',
-                        opacity: canAdd ? 1 : 0.25,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -413,7 +400,7 @@ export default function Step2Attributes({
             fontFamily: 'var(--font-im-fell)',
             fontStyle: 'italic',
             fontSize: '0.78rem',
-            color: 'rgba(216,228,248,0.3)',
+            color: 'rgba(var(--text-rgb),0.3)',
             marginTop: '0.25rem',
           }}>
             Traços negativos (Frágil, Fraco) devolvem Fome — combináveis com traços positivos.

@@ -14,12 +14,12 @@ export default function HeroSection() {
     <section
       id="hero"
       aria-label="Seção principal"
-      style={{ paddingTop: 44, background: 'var(--hk-void)', position: 'relative', overflow: 'hidden' }}
+      style={{ paddingTop: 44, background: 'var(--bg)', position: 'relative', overflow: 'hidden' }}
     >
       {/* ── Banner ── */}
       <div
         className="relative flex justify-center items-center overflow-hidden"
-        style={{ width: '100%', height: 400, background: 'var(--hk-void)' }}
+        style={{ width: '100%', height: 400, background: 'var(--bg)' }}
       >
         {/* Partículas */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
@@ -33,11 +33,11 @@ export default function HeroSection() {
                 left: `${p.left}%`,
                 bottom: p.bottom,
                 background: p.isGold
-                  ? `rgba(212,168,67,${0.6 + (i % 3) * 0.1})`
-                  : `rgba(74,158,255,${0.5 + (i % 3) * 0.08})`,
+                  ? `rgba(var(--gold-light-rgb),${0.6 + (i % 3) * 0.1})`
+                  : `rgba(var(--void-glow-rgb),${0.5 + (i % 3) * 0.08})`,
                 boxShadow: p.isGold
-                  ? `0 0 ${p.size * 2}px ${p.size}px rgba(212,168,67,0.4)`
-                  : `0 0 ${p.size * 2}px ${p.size}px rgba(74,158,255,0.35)`,
+                  ? `0 0 ${p.size * 2}px ${p.size}px rgba(var(--gold-light-rgb),0.4)`
+                  : `0 0 ${p.size * 2}px ${p.size}px rgba(var(--void-glow-rgb),0.35)`,
                 animationDuration: `${p.duration}s`,
                 animationDelay: `${p.delay}s`,
               }}
@@ -61,26 +61,26 @@ export default function HeroSection() {
       <div className="flex flex-col items-center gap-4 text-center px-6 pt-10 pb-5 relative z-10">
         {/* Ornamento */}
         <div className="flex items-center gap-4" aria-hidden>
-          <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--hk-gold))' }} />
-          <span style={{ color: 'var(--hk-gold)', fontSize: '.95rem', opacity: .85, textShadow: '0 0 10px rgba(212,168,67,.7)' }}>◈</span>
-          <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--hk-gold))' }} />
+          <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+          <span style={{ color: 'var(--gold)', fontSize: '.95rem', opacity: .85, textShadow: '0 0 10px rgba(var(--gold-rgb),.7)' }}>◈</span>
+          <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
         </div>
 
         <p
-          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.58rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--hk-dim)' }}
+          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.58rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
         >
           Um RPG de mesa inspirado em Hollow Knight
         </p>
 
         <h1
-          className="soul-glow"
-          style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 4vw, 4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--hk-ghost)' }}
+          className="gold-glow"
+          style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 4vw, 4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)' }}
         >
           Filhos<br />do Vazio
         </h1>
 
         <p
-          style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.82rem, 1.5vw, .98rem)', color: 'rgba(216,228,248,.72)', lineHeight: 1.85, maxWidth: 340 }}
+          style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.82rem, 1.5vw, .98rem)', color: 'rgba(var(--text-rgb),.72)', lineHeight: 1.85, maxWidth: 340 }}
         >
           Aventuras em um reino decadente de insetos.<br />
           Forje seu legado nas sombras de Hallownest.

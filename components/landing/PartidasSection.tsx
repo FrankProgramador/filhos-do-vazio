@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function PartidasSection() {
   return (
-    <section id="partidas" aria-labelledby="partidas-title" style={{ background: 'var(--hk-deep)', padding: '5rem 0' }}>
+    <section id="partidas" aria-labelledby="partidas-title" style={{ background: 'var(--bg)', padding: '5rem 0' }}>
       <div className="max-w-screen-xl mx-auto px-6">
         <p className="lnd-label" aria-hidden>Plataforma</p>
 
@@ -12,11 +12,11 @@ export default function PartidasSection() {
             <h2
               id="partidas-title"
               className="mb-5"
-              style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.5rem, 3.5vw, 2.1rem)', fontWeight: 700, color: 'var(--hk-pale)', lineHeight: 1.3 }}
+              style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.5rem, 3.5vw, 2.1rem)', fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}
             >
               ⚔️ Gerenciamento de Partidas
             </h2>
-            <p className="mb-8" style={{ color: 'rgba(216,228,248,.55)', fontSize: '.95rem', lineHeight: 1.85, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
+            <p className="mb-8" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', lineHeight: 1.85, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
               Organize suas mesas, compartilhe fichas, acompanhe a campanha e desafie seus amigos.
               Ferramentas para jogadores e mestres em um só lugar — da criação do herói até o fim da jornada.
             </p>
@@ -34,8 +34,8 @@ export default function PartidasSection() {
               aspectRatio: '1',
               maxWidth: 320,
               width: '100%',
-              background: '#131728',
-              border: '1px solid rgba(74,158,255,.14)',
+              background: 'var(--card)',
+              border: '1px solid rgba(var(--gold-rgb),.14)',
               borderRadius: 14,
               fontSize: '5rem',
               position: 'relative',
@@ -46,7 +46,7 @@ export default function PartidasSection() {
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'radial-gradient(ellipse at 50% 40%, rgba(74,158,255,.08) 0%, transparent 70%)',
+                background: 'radial-gradient(ellipse at 50% 40%, rgba(var(--gold-rgb),.08) 0%, transparent 70%)',
               }}
               aria-hidden
             />
@@ -55,7 +55,7 @@ export default function PartidasSection() {
                 position: 'absolute',
                 top: 0, left: 0, right: 0,
                 height: 2,
-                background: 'linear-gradient(to right, transparent, rgba(74,158,255,.55), transparent)',
+                background: 'linear-gradient(to right, transparent, rgba(var(--gold-rgb),.55), transparent)',
               }}
               aria-hidden
             />

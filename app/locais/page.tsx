@@ -94,17 +94,17 @@ const OrnamentDivider = () => (
       style={{
         width: 44,
         height: 1,
-        background: 'linear-gradient(to right, transparent, var(--hk-gold))',
+        background: 'linear-gradient(to right, transparent, var(--gold))',
       }}
     />
-    <span style={{ color: 'var(--hk-gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(212,168,67,0.7)' }}>
+    <span style={{ color: 'var(--gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(var(--gold-rgb),0.7)' }}>
       ◈
     </span>
     <div
       style={{
         width: 44,
         height: 1,
-        background: 'linear-gradient(to left, transparent, var(--hk-gold))',
+        background: 'linear-gradient(to left, transparent, var(--gold))',
       }}
     />
   </div>
@@ -115,14 +115,14 @@ function LocalCard({ local }: { local: Local }) {
     <article
       className="flex flex-col rounded-xl overflow-hidden transition-all duration-200 group"
       style={{
-        background: 'var(--hk-deep)',
-        border: '1px solid rgba(74,158,255,0.14)',
+        background: 'var(--card)',
+        border: '1px solid rgba(var(--gold-rgb),0.14)',
       }}
     >
       {/* Linha dourada no topo no hover */}
       <div
         className="h-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.55), transparent)' }}
+        style={{ background: 'linear-gradient(to right, transparent, rgba(var(--gold-rgb),0.55), transparent)' }}
         aria-hidden
       />
 
@@ -133,8 +133,8 @@ function LocalCard({ local }: { local: Local }) {
         aria-label={local.altImagem}
         style={{
           aspectRatio: '16 / 9',
-          background: 'linear-gradient(135deg, #0f1628, #0b1020)',
-          borderBottom: '1px solid rgba(74,158,255,0.1)',
+          background: 'linear-gradient(135deg, var(--bg-secondary), var(--bg))',
+          borderBottom: '1px solid rgba(var(--gold-rgb),0.1)',
           position: 'relative',
         }}
       >
@@ -142,7 +142,7 @@ function LocalCard({ local }: { local: Local }) {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(ellipse at 50% 50%, rgba(212,168,67,0.05) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 50%, rgba(var(--gold-rgb),0.05) 0%, transparent 70%)',
           }}
           aria-hidden
         />
@@ -155,7 +155,7 @@ function LocalCard({ local }: { local: Local }) {
             fontSize: '0.62rem',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
-            color: 'var(--hk-dim)',
+            color: 'var(--text-muted)',
             position: 'relative',
             zIndex: 1,
           }}
@@ -173,7 +173,7 @@ function LocalCard({ local }: { local: Local }) {
               fontFamily: 'var(--font-cinzel)',
               fontSize: '1.05rem',
               fontWeight: 700,
-              color: 'var(--hk-gold)',
+              color: 'var(--gold)',
               letterSpacing: '0.05em',
               lineHeight: 1.3,
             }}
@@ -193,10 +193,10 @@ function LocalCard({ local }: { local: Local }) {
           style={{
             fontFamily: 'var(--font-im-fell)',
             fontStyle: 'italic',
-            color: 'rgba(216,228,248,0.65)',
+            color: 'rgba(var(--text-rgb),0.65)',
             fontSize: '0.9rem',
             lineHeight: 1.65,
-            borderLeft: '2px solid rgba(212,168,67,0.3)',
+            borderLeft: '2px solid rgba(var(--gold-rgb),0.3)',
             paddingLeft: '0.85rem',
           }}
         >
@@ -217,7 +217,7 @@ function LocalCard({ local }: { local: Local }) {
                   fontSize: '0.58rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'var(--hk-soul)',
+                  color: 'var(--gold-light)',
                   paddingTop: '0.1rem',
                   minWidth: '4rem',
                 }}
@@ -228,7 +228,7 @@ function LocalCard({ local }: { local: Local }) {
                 style={{
                   fontFamily: 'var(--font-im-fell)',
                   fontSize: '0.88rem',
-                  color: 'rgba(216,228,248,0.55)',
+                  color: 'rgba(var(--text-rgb),0.55)',
                   lineHeight: 1.7,
                 }}
               >
@@ -241,7 +241,7 @@ function LocalCard({ local }: { local: Local }) {
         {/* Rodapé: gancho + botão */}
         <div
           className="flex items-end justify-between gap-4 pt-3"
-          style={{ borderTop: '1px solid rgba(74,158,255,0.1)' }}
+          style={{ borderTop: '1px solid rgba(var(--gold-rgb),0.1)' }}
         >
           <div>
             <p
@@ -250,7 +250,7 @@ function LocalCard({ local }: { local: Local }) {
                 fontSize: '0.55rem',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
-                color: 'var(--hk-gold)',
+                color: 'var(--gold)',
                 opacity: 0.8,
                 marginBottom: '0.3rem',
               }}
@@ -262,7 +262,7 @@ function LocalCard({ local }: { local: Local }) {
                 fontFamily: 'var(--font-im-fell)',
                 fontStyle: 'italic',
                 fontSize: '0.82rem',
-                color: 'rgba(216,228,248,0.45)',
+                color: 'rgba(var(--text-rgb),0.45)',
                 lineHeight: 1.5,
               }}
             >
@@ -275,9 +275,9 @@ function LocalCard({ local }: { local: Local }) {
               fontSize: '0.7rem',
               padding: '0.6rem 1.2rem',
               borderRadius: 6,
-              background: 'rgba(122,138,170,0.06)',
-              borderColor: 'rgba(122,138,170,0.2)',
-              color: 'rgba(122,138,170,0.35)',
+              background: 'rgba(var(--text-muted-rgb),0.06)',
+              borderColor: 'rgba(var(--text-muted-rgb),0.2)',
+              color: 'rgba(var(--text-muted-rgb),0.35)',
               cursor: 'not-allowed',
               pointerEvents: 'none',
               letterSpacing: '0.1em',
@@ -298,7 +298,7 @@ function LocalCard({ local }: { local: Local }) {
 
 export default function LocaisPage() {
   return (
-    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--hk-void)' }}>
+    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <SiteHeader activePath="/locais" />
 
       {/* ── Hero / cabeçalho da página ─────────────────── */}
@@ -312,7 +312,7 @@ export default function LocaisPage() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(74,158,255,0.07) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(var(--gold-rgb),0.07) 0%, transparent 70%)',
           }}
           aria-hidden
         />
@@ -331,13 +331,13 @@ export default function LocaisPage() {
           >
             <Link
               href="/"
-              style={{ color: 'var(--hk-soul)' }}
+              style={{ color: 'var(--gold-light)' }}
               className="transition-opacity hover:opacity-80"
             >
               ← Início
             </Link>
-            <span style={{ color: 'rgba(74,158,255,0.35)' }} aria-hidden>◈</span>
-            <span style={{ color: 'rgba(216,228,248,0.45)' }} aria-current="page">Locais</span>
+            <span className="breadcrumb-sep" aria-hidden>◈</span>
+            <span className="breadcrumb-current" aria-current="page">Locais</span>
           </nav>
 
           <OrnamentDivider />
@@ -348,20 +348,20 @@ export default function LocaisPage() {
               fontSize: '0.58rem',
               letterSpacing: '0.38em',
               textTransform: 'uppercase',
-              color: 'var(--hk-dim)',
+              color: 'var(--text-muted)',
             }}
           >
             Territórios do Reino em Ruínas
           </p>
 
           <h1
-            className="soul-glow"
+            className="gold-glow"
             style={{
               fontFamily: 'var(--font-cinzel-decorative)',
               fontSize: 'clamp(2rem, 5vw, 3.4rem)',
               fontWeight: 900,
               lineHeight: 1.05,
-              color: 'var(--hk-ghost)',
+              color: 'var(--text)',
             }}
           >
             Locais
@@ -372,7 +372,7 @@ export default function LocaisPage() {
               fontFamily: 'var(--font-im-fell)',
               fontStyle: 'italic',
               fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-              color: 'rgba(216,228,248,0.6)',
+              color: 'rgba(var(--text-rgb),0.6)',
               lineHeight: 1.85,
               maxWidth: 480,
             }}
@@ -384,8 +384,7 @@ export default function LocaisPage() {
 
         {/* Divisor dourado */}
         <div
-          className="w-full"
-          style={{ height: 1, background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.18), transparent)' }}
+          className="w-full divider-gold"
           aria-hidden
         />
       </section>
@@ -393,7 +392,7 @@ export default function LocaisPage() {
       {/* ── Grade de locais ────────────────────────────── */}
       <main
         className="flex-1 mx-auto w-full px-4 sm:px-6 py-16"
-        style={{ maxWidth: 1200, background: 'var(--hk-abyss)' }}
+        style={{ maxWidth: 1200, background: 'var(--bg-secondary)' }}
         id="locais-grid"
       >
         <div className="flex flex-col items-center gap-3 mb-12">
@@ -404,13 +403,13 @@ export default function LocaisPage() {
             Cinco Regiões
           </p>
           <h2
+            className="section-heading-glow"
             style={{
               fontFamily: 'var(--font-cinzel)',
               fontSize: 'clamp(1.4rem, 3vw, 2rem)',
               fontWeight: 700,
-              color: 'var(--hk-pale)',
+              color: 'var(--text)',
               textAlign: 'center',
-              textShadow: '0 0 24px rgba(74,158,255,0.18)',
             }}
           >
             Os Territórios do Vazio
@@ -418,7 +417,7 @@ export default function LocaisPage() {
           <p
             style={{
               textAlign: 'center',
-              color: 'rgba(216,228,248,0.5)',
+              color: 'rgba(var(--text-rgb),0.5)',
               fontSize: '0.92rem',
               maxWidth: 520,
               fontFamily: 'var(--font-im-fell)',

@@ -29,17 +29,17 @@ const cards = [
 
 export default function ReinoSection() {
   return (
-    <section id="reino" aria-labelledby="reino-title" style={{ background: 'var(--hk-abyss)', padding: '5rem 0' }}>
+    <section id="reino" aria-labelledby="reino-title" style={{ background: 'var(--bg)', padding: '5rem 0' }}>
       <div className="max-w-screen-xl mx-auto px-6">
         <p className="lnd-label" aria-hidden>Lore &amp; Mundo</p>
         <h2
           id="reino-title"
-          className="text-center mb-4"
-          style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--hk-pale)', textShadow: '0 0 24px rgba(74,158,255,.18)' }}
+          className="text-center mb-4 section-heading-glow"
+          style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--text)' }}
         >
           🌿 O Reino em Ruínas
         </h2>
-        <p className="text-center mb-12" style={{ color: 'rgba(216,228,248,.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem' }}>
+        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem' }}>
           Explore os fragmentos de Hallownest — um reino que caiu, mas nunca foi esquecido.
         </p>
 
@@ -53,11 +53,11 @@ export default function ReinoSection() {
               <div className="p-6">
                 <h3
                   className="mb-3"
-                  style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', fontWeight: 600, color: 'var(--hk-gold)', letterSpacing: '.06em' }}
+                  style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', fontWeight: 600, color: 'var(--gold)', letterSpacing: '.06em' }}
                 >
                   {title}
                 </h3>
-                <p style={{ color: 'rgba(216,228,248,.55)', fontSize: '.9rem', lineHeight: 1.75, fontFamily: 'var(--font-im-fell)' }}>
+                <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.9rem', lineHeight: 1.75, fontFamily: 'var(--font-im-fell)' }}>
                   {text}
                 </p>
                 {href && cta && (

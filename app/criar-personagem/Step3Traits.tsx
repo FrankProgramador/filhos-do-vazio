@@ -29,7 +29,7 @@ export default function Step3Traits({
         <p style={{
           fontFamily: 'var(--font-im-fell)',
           fontStyle: 'italic',
-          color: 'rgba(216,228,248,0.55)',
+          color: 'rgba(var(--text-rgb),0.55)',
           lineHeight: 1.8,
           maxWidth: 520,
         }}>
@@ -41,8 +41,8 @@ export default function Step3Traits({
           flexShrink: 0,
           textAlign: 'center',
           padding: '0.6rem 1.2rem',
-          background: 'var(--hk-deep)',
-          border: '1px solid rgba(74,158,255,0.12)',
+          background: 'var(--card)',
+          border: '1px solid rgba(var(--gold-rgb),0.12)',
           borderRadius: 7,
         }}>
           <span style={{
@@ -50,7 +50,7 @@ export default function Step3Traits({
             fontSize: '0.55rem',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            color: 'var(--hk-dim)',
+            color: 'var(--text-muted)',
             display: 'block',
             marginBottom: '0.2rem',
           }}>
@@ -60,10 +60,10 @@ export default function Step3Traits({
             fontFamily: 'var(--font-cinzel)',
             fontSize: '1.1rem',
             fontWeight: 700,
-            color: totalTracos >= MAX_TRACOS ? '#e05050' : 'var(--hk-soul-pale)',
+            color: totalTracos >= MAX_TRACOS ? 'var(--error)' : 'var(--text)',
           }}>
             {totalTracos}
-            <span style={{ fontSize: '0.65rem', color: 'var(--hk-dim)', fontWeight: 400 }}> / {MAX_TRACOS}</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}> / {MAX_TRACOS}</span>
           </span>
         </div>
       </div>
@@ -75,10 +75,10 @@ export default function Step3Traits({
             fontSize: '0.62rem',
             letterSpacing: '0.22em',
             textTransform: 'uppercase',
-            color: 'var(--hk-gold)',
+            color: 'var(--gold)',
             marginBottom: '0.75rem',
             paddingBottom: '0.5rem',
-            borderBottom: '1px solid rgba(212,168,67,0.12)',
+            borderBottom: '1px solid rgba(var(--gold-rgb),0.12)',
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
@@ -96,11 +96,9 @@ export default function Step3Traits({
               return (
                 <div
                   key={traco.id}
+                  className={`card ${isSelected ? 'card--selected' : ''}`}
                   style={{
-                    background: isSelected ? 'rgba(74,158,255,0.07)' : 'var(--hk-deep)',
-                    border: isSelected
-                      ? '1px solid rgba(74,158,255,0.28)'
-                      : '1px solid rgba(74,158,255,0.09)',
+                    background: isSelected ? undefined : 'var(--card)',
                     borderRadius: 8,
                     opacity: !canToggle ? 0.38 : 1,
                     transition: 'all 0.2s',
@@ -129,17 +127,17 @@ export default function Step3Traits({
                         flexShrink: 0,
                         marginTop: 2,
                         border: isSelected
-                          ? '2px solid var(--hk-soul)'
-                          : '1px solid rgba(74,158,255,0.3)',
+                          ? '2px solid var(--gold)'
+                          : '1px solid rgba(var(--gold-rgb),0.3)',
                         borderRadius: 3,
-                        background: isSelected ? 'rgba(74,158,255,0.18)' : 'transparent',
+                        background: isSelected ? 'rgba(var(--gold-rgb),0.18)' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         transition: 'all 0.15s',
                       }}>
                         {isSelected && (
-                          <span style={{ color: 'var(--hk-soul)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>
+                          <span style={{ color: 'var(--gold)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>
                         )}
                       </div>
 
@@ -153,7 +151,7 @@ export default function Step3Traits({
                           height: 48,
                           borderRadius: 4,
                           objectFit: 'cover',
-                          border: '1px solid rgba(74,158,255,0.12)',
+                          border: '1px solid rgba(var(--gold-rgb),0.12)',
                           flexShrink: 0,
                         }}
                       />
@@ -164,7 +162,7 @@ export default function Step3Traits({
                             fontFamily: 'var(--font-cinzel)',
                             fontSize: '0.78rem',
                             fontWeight: 600,
-                            color: isSelected ? 'var(--hk-soul-pale)' : 'var(--hk-pale)',
+                            color: isSelected ? 'var(--gold-light)' : 'var(--text)',
                           }}>
                             {traco.nome}
                           </span>
@@ -181,7 +179,7 @@ export default function Step3Traits({
                           fontFamily: 'var(--font-im-fell)',
                           fontStyle: 'italic',
                           fontSize: '0.82rem',
-                          color: 'rgba(216,228,248,0.48)',
+                          color: 'rgba(var(--text-rgb),0.48)',
                           marginTop: '0.3rem',
                           lineHeight: 1.6,
                         }}>
@@ -196,8 +194,8 @@ export default function Step3Traits({
                     <div style={{
                       margin: '0 1rem 0.875rem',
                       padding: '0.75rem',
-                      background: 'rgba(74,158,255,0.04)',
-                      border: '1px solid rgba(74,158,255,0.1)',
+                      background: 'rgba(var(--gold-rgb),0.04)',
+                      border: '1px solid rgba(var(--gold-rgb),0.1)',
                       borderRadius: 6,
                     }}>
                       <p style={{
@@ -205,7 +203,7 @@ export default function Step3Traits({
                         fontSize: '0.48rem',
                         letterSpacing: '0.15em',
                         textTransform: 'uppercase',
-                        color: 'var(--hk-dim)',
+                        color: 'var(--text-muted)',
                         marginBottom: '0.6rem',
                       }}>
                         Sub-traços disponíveis
@@ -224,10 +222,10 @@ export default function Step3Traits({
                               className="text-left w-full"
                               style={{
                                 padding: '0.6rem 0.75rem',
-                                background: isSubSelected ? 'rgba(74,158,255,0.09)' : 'rgba(74,158,255,0.02)',
+                                background: isSubSelected ? 'rgba(var(--gold-rgb),0.09)' : 'rgba(var(--gold-rgb),0.02)',
                                 border: isSubSelected
-                                  ? '1px solid rgba(74,158,255,0.22)'
-                                  : '1px solid rgba(74,158,255,0.08)',
+                                  ? '1px solid rgba(var(--gold-rgb),0.22)'
+                                  : '1px solid rgba(var(--gold-rgb),0.08)',
                                 borderRadius: 5,
                                 cursor: canSelectSub ? 'pointer' : 'not-allowed',
                                 opacity: !canSelectSub ? 0.38 : 1,
@@ -242,29 +240,29 @@ export default function Step3Traits({
                                   flexShrink: 0,
                                   marginTop: 2,
                                   border: isSubSelected
-                                    ? '2px solid rgba(74,158,255,0.7)'
-                                    : '1px solid rgba(74,158,255,0.25)',
+                                    ? '2px solid rgba(var(--gold-rgb),0.7)'
+                                    : '1px solid rgba(var(--gold-rgb),0.25)',
                                   borderRadius: 2,
-                                  background: isSubSelected ? 'rgba(74,158,255,0.2)' : 'transparent',
+                                  background: isSubSelected ? 'rgba(var(--gold-rgb),0.2)' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                 }}>
                                   {isSubSelected && (
-                                    <span style={{ color: 'var(--hk-soul)', fontSize: '0.5rem', lineHeight: 1 }}>✓</span>
+                                    <span style={{ color: 'var(--gold)', fontSize: '0.5rem', lineHeight: 1 }}>✓</span>
                                   )}
                                 </div>
 
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src="https://placehold.co/36x36/0b0d18/4a9eff?text=Em+Breve"
+                                  src="https://placehold.co/36x36/1B1D21/B8924A?text=Em+Breve"
                                   alt={`${sub.nome} — thumbnail disponível em breve`}
                                   style={{
                                     width: 32,
                                     height: 32,
                                     borderRadius: 3,
                                     objectFit: 'cover',
-                                    border: '1px solid rgba(74,158,255,0.1)',
+                                    border: '1px solid rgba(var(--gold-rgb),0.1)',
                                     flexShrink: 0,
                                   }}
                                 />
@@ -275,16 +273,11 @@ export default function Step3Traits({
                                       fontFamily: 'var(--font-cinzel)',
                                       fontSize: '0.7rem',
                                       fontWeight: 600,
-                                      color: isSubSelected ? 'var(--hk-soul-pale)' : 'var(--hk-pale)',
+                                      color: isSubSelected ? 'var(--gold-light)' : 'var(--text)',
                                     }}>
                                       {sub.nome}
                                     </span>
-                                    <span className="ddb-badge" style={{
-                                      fontSize: '0.44rem',
-                                      color: 'var(--hk-gold)',
-                                      borderColor: 'rgba(212,168,67,0.3)',
-                                      background: 'rgba(212,168,67,0.06)',
-                                    }}>
+                                    <span className="badge badge--gold" style={{ fontSize: '0.44rem' }}>
                                       +{sub.custoFome} Fome
                                     </span>
                                   </div>
@@ -292,7 +285,7 @@ export default function Step3Traits({
                                     fontFamily: 'var(--font-im-fell)',
                                     fontStyle: 'italic',
                                     fontSize: '0.76rem',
-                                    color: 'rgba(216,228,248,0.4)',
+                                    color: 'rgba(var(--text-rgb),0.4)',
                                     marginTop: '0.2rem',
                                     lineHeight: 1.5,
                                   }}>
@@ -314,15 +307,10 @@ export default function Step3Traits({
       ))}
 
       {totalTracos >= MAX_TRACOS && (
-        <div style={{
-          padding: '0.7rem 1rem',
-          background: 'rgba(224,80,80,0.05)',
-          border: '1px solid rgba(224,80,80,0.18)',
-          borderRadius: 6,
+        <div className="alert alert--error" style={{
           fontFamily: 'var(--font-cinzel)',
           fontSize: '0.6rem',
           letterSpacing: '0.08em',
-          color: '#e05050',
         }}>
           Limite de {MAX_TRACOS} traços atingido. Remova um traço para adicionar outro.
           Sub-traços não contam para este limite.

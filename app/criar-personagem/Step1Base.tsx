@@ -24,7 +24,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
       <p style={{
         fontFamily: 'var(--font-im-fell)',
         fontStyle: 'italic',
-        color: 'rgba(216,228,248,0.55)',
+        color: 'rgba(var(--text-rgb),0.55)',
         marginBottom: '2rem',
         lineHeight: 1.8,
         maxWidth: 600,
@@ -40,14 +40,10 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
             <button
               key={base.id}
               onClick={() => onSelect(base.id)}
-              className="text-left overflow-hidden transition-all duration-200"
+              className={`card text-left overflow-hidden transition-all duration-200 ${isSelected ? 'card--selected' : ''}`}
               style={{
-                background: 'var(--hk-deep)',
-                border: isSelected
-                  ? '2px solid rgba(212,168,67,0.65)'
-                  : '1px solid rgba(74,158,255,0.14)',
+                background: 'var(--card)',
                 borderRadius: 12,
-                boxShadow: isSelected ? '0 0 28px rgba(212,168,67,0.12)' : 'none',
                 transform: isSelected ? 'translateY(-4px)' : 'none',
                 padding: 0,
                 cursor: 'pointer',
@@ -56,7 +52,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
               <div style={{
                 height: 2,
                 background: isSelected
-                  ? 'linear-gradient(to right, transparent, rgba(212,168,67,0.8), transparent)'
+                  ? 'linear-gradient(to right, transparent, rgba(var(--gold-rgb),0.8), transparent)'
                   : 'transparent',
               }} />
 
@@ -70,7 +66,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                 <div style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'linear-gradient(to bottom, transparent 87%, var(--hk-deep))',
+                  background: 'linear-gradient(to bottom, transparent 87%, var(--card))',
                 }} />
               </div>
 
@@ -79,7 +75,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                   fontFamily: 'var(--font-cinzel)',
                   fontSize: '1rem',
                   fontWeight: 700,
-                  color: isSelected ? 'var(--hk-gold)' : 'var(--hk-pale)',
+                  color: isSelected ? 'var(--gold)' : 'var(--text)',
                   marginBottom: '0.4rem',
                 }}>
                   {base.nome}
@@ -88,7 +84,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                   fontFamily: 'var(--font-im-fell)',
                   fontStyle: 'italic',
                   fontSize: '0.85rem',
-                  color: 'rgba(216,228,248,0.5)',
+                  color: 'rgba(var(--text-rgb),0.5)',
                   marginBottom: '1rem',
                   lineHeight: 1.6,
                 }}>
@@ -101,8 +97,8 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                       key={key}
                       className="flex items-center justify-between"
                       style={{
-                        background: 'rgba(74,158,255,0.04)',
-                        border: '1px solid rgba(74,158,255,0.09)',
+                        background: 'rgba(var(--gold-rgb),0.04)',
+                        border: '1px solid rgba(var(--gold-rgb),0.09)',
                         borderRadius: 4,
                         padding: '0.25rem 0.5rem',
                       }}
@@ -112,7 +108,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                         fontSize: '0.48rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        color: 'var(--hk-dim)',
+                        color: 'var(--text-muted)',
                       }}>
                         {label}
                       </span>
@@ -120,7 +116,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                         fontFamily: 'var(--font-cinzel)',
                         fontSize: '0.72rem',
                         fontWeight: 600,
-                        color: isSelected ? 'var(--hk-gold)' : 'var(--hk-soul-pale)',
+                        color: isSelected ? 'var(--gold)' : 'var(--text)',
                       }}>
                         {base.atributos[key]}
                       </span>
@@ -136,7 +132,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                     fontSize: '0.58rem',
                     letterSpacing: '0.2em',
                     textTransform: 'uppercase',
-                    color: 'var(--hk-gold)',
+                    color: 'var(--gold)',
                   }}>
                     ✓ Selecionado
                   </div>

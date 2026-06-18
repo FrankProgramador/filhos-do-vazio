@@ -54,10 +54,10 @@ export default function Summary({
     width: '100%',
     minHeight: 90,
     padding: '0.75rem 1rem',
-    background: 'var(--hk-abyss)',
-    border: '1px solid rgba(74,158,255,0.14)',
+    background: 'var(--bg-secondary)',
+    border: '1px solid rgba(var(--gold-rgb),0.14)',
     borderRadius: 6,
-    color: 'var(--hk-pale)',
+    color: 'var(--text)',
     fontFamily: 'var(--font-im-fell)',
     fontStyle: 'italic' as const,
     fontSize: '0.88rem',
@@ -71,19 +71,20 @@ export default function Summary({
     fontSize: '0.62rem',
     letterSpacing: '0.2em',
     textTransform: 'uppercase' as const,
-    color: 'var(--hk-gold)',
+    color: 'var(--gold)',
     display: 'block',
     marginBottom: '0.5rem',
   }
 
+  const TRILHA_TIPO_COLOR = {
+    marcial: { color: 'var(--gold)', border: 'rgba(var(--gold-rgb),0.35)', bg: 'rgba(var(--gold-rgb),0.08)' },
+    mistico: { color: 'var(--void-glow)', border: 'rgba(var(--void-light-rgb),0.35)', bg: 'rgba(var(--void-light-rgb),0.08)' },
+  } as const
+
   return (
     <div className="flex flex-col gap-8">
       {/* "Not implemented" warning */}
-      <div style={{
-        padding: '0.75rem 1rem',
-        background: 'rgba(212,168,67,0.06)',
-        border: '1px solid rgba(212,168,67,0.28)',
-        borderRadius: 7,
+      <div className="alert alert--warning" style={{
         display: 'flex',
         alignItems: 'center',
         gap: '0.75rem',
@@ -93,7 +94,6 @@ export default function Summary({
           fontFamily: 'var(--font-cinzel)',
           fontSize: '0.58rem',
           letterSpacing: '0.06em',
-          color: 'rgba(212,168,67,0.85)',
           margin: 0,
           lineHeight: 1.6,
         }}>
@@ -105,7 +105,7 @@ export default function Summary({
       {/* Name input */}
       <div>
         <label style={labelStyle}>
-          Nome do Personagem <span style={{ color: '#e05050' }}>*</span>
+          Nome do Personagem <span style={{ color: 'var(--error)' }}>*</span>
         </label>
         <input
           type="text"
@@ -120,16 +120,16 @@ export default function Summary({
 
       {/* Character sheet preview */}
       <div style={{
-        background: 'var(--hk-deep)',
-        border: '1px solid rgba(74,158,255,0.12)',
+        background: 'var(--card)',
+        border: '1px solid rgba(var(--gold-rgb),0.12)',
         borderRadius: 12,
         overflow: 'hidden',
       }}>
         {/* Sheet header */}
         <div style={{
           padding: '1.25rem 1.5rem',
-          background: 'linear-gradient(to right, rgba(15,18,34,0.9), rgba(11,13,24,0.95))',
-          borderBottom: '1px solid rgba(74,158,255,0.08)',
+          background: 'linear-gradient(to right, rgba(var(--bg-secondary-rgb),0.9), rgba(var(--bg-rgb),0.95))',
+          borderBottom: '1px solid rgba(var(--gold-rgb),0.08)',
         }}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -138,7 +138,7 @@ export default function Summary({
                 fontSize: '0.52rem',
                 letterSpacing: '0.22em',
                 textTransform: 'uppercase',
-                color: 'var(--hk-dim)',
+                color: 'var(--text-muted)',
                 marginBottom: '0.3rem',
               }}>
                 Ficha de Personagem
@@ -147,18 +147,18 @@ export default function Summary({
                 fontFamily: 'var(--font-cinzel-decorative)',
                 fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
                 fontWeight: 700,
-                color: sheet.nome.trim() ? 'var(--hk-ghost)' : 'var(--hk-dim)',
+                color: sheet.nome.trim() ? 'var(--text)' : 'var(--text-muted)',
               }}>
                 {sheet.nome.trim() || '—'}
               </h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              {base && <span className="ddb-badge ddb-badge-soul">{base.nome}</span>}
+              {base && <span className="badge badge--gold">{base.nome}</span>}
               {trilha && (
                 <span className="ddb-badge" style={{
-                  color: trilha.tipo === 'marcial' ? 'var(--hk-gold)' : 'var(--hk-soul)',
-                  borderColor: trilha.tipo === 'marcial' ? 'rgba(212,168,67,0.35)' : 'rgba(74,158,255,0.35)',
-                  background: trilha.tipo === 'marcial' ? 'rgba(212,168,67,0.08)' : 'rgba(74,158,255,0.08)',
+                  color: TRILHA_TIPO_COLOR[trilha.tipo].color,
+                  borderColor: TRILHA_TIPO_COLOR[trilha.tipo].border,
+                  background: TRILHA_TIPO_COLOR[trilha.tipo].bg,
                 }}>
                   Trilha: {trilha.nome}
                 </span>
@@ -168,14 +168,14 @@ export default function Summary({
         </div>
 
         {/* Attributes */}
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(74,158,255,0.07)' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(var(--gold-rgb),0.07)' }}>
           <p className="ddb-section-title" style={{ marginBottom: '0.875rem' }}>Atributos</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: '0.45rem' }}>
             {ALL_ATTRS.map(([key, label]) => (
               <div key={key} style={{
                 padding: '0.6rem 0.5rem',
-                background: 'var(--hk-abyss)',
-                border: '1px solid rgba(74,158,255,0.1)',
+                background: 'var(--bg-secondary)',
+                border: '1px solid rgba(var(--gold-rgb),0.1)',
                 borderRadius: 6,
                 textAlign: 'center',
               }}>
@@ -183,7 +183,7 @@ export default function Summary({
                   fontFamily: 'var(--font-cinzel)',
                   fontSize: '1.2rem',
                   fontWeight: 700,
-                  color: 'var(--hk-soul-pale)',
+                  color: 'var(--text)',
                   lineHeight: 1,
                 }}>
                   {fmtAttr(finalAttrs[key] as number)}
@@ -193,7 +193,7 @@ export default function Summary({
                   fontSize: '0.45rem',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: 'var(--hk-dim)',
+                  color: 'var(--text-muted)',
                   marginTop: '0.3rem',
                 }}>
                   {label}
@@ -205,16 +205,16 @@ export default function Summary({
 
         {/* Traits */}
         {(selectedAttrTraits.length > 0 || selectedSpecialTraits.length > 0) && (
-          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(74,158,255,0.07)' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(var(--gold-rgb),0.07)' }}>
             <p className="ddb-section-title" style={{ marginBottom: '0.875rem' }}>Traços</p>
             <div className="flex flex-col gap-2">
               {selectedAttrTraits.map(({ traco, count }) => (
                 <div key={traco.id} className="flex items-center gap-2 flex-wrap">
-                  <span className="ddb-badge ddb-badge-soul" style={{ fontSize: '0.48rem' }}>Atributo</span>
+                  <span className="badge badge--gold" style={{ fontSize: '0.48rem' }}>Atributo</span>
                   <span style={{
                     fontFamily: 'var(--font-cinzel)',
                     fontSize: '0.72rem',
-                    color: 'var(--hk-pale)',
+                    color: 'var(--text)',
                   }}>
                     {traco.nome}{count > 1 ? ` ×${count}` : ''}
                   </span>
@@ -222,7 +222,7 @@ export default function Summary({
                     fontFamily: 'var(--font-im-fell)',
                     fontStyle: 'italic',
                     fontSize: '0.78rem',
-                    color: 'var(--hk-dim)',
+                    color: 'var(--text-muted)',
                   }}>
                     {traco.efeito}
                   </span>
@@ -240,7 +240,7 @@ export default function Summary({
                       <span style={{
                         fontFamily: 'var(--font-cinzel)',
                         fontSize: '0.72rem',
-                        color: 'var(--hk-pale)',
+                        color: 'var(--text)',
                       }}>
                         {traco.nome}
                       </span>
@@ -248,7 +248,7 @@ export default function Summary({
                         fontFamily: 'var(--font-im-fell)',
                         fontStyle: 'italic',
                         fontSize: '0.78rem',
-                        color: 'var(--hk-dim)',
+                        color: 'var(--text-muted)',
                       }}>
                         {traco.categoria}
                       </span>
@@ -256,12 +256,12 @@ export default function Summary({
                     {/* Sub-traços aninhados */}
                     {subsSelecionados.map(sub => (
                       <div key={sub.id} className="flex items-center gap-2 flex-wrap" style={{ paddingLeft: '1.25rem' }}>
-                        <span style={{ color: 'rgba(74,158,255,0.35)', fontSize: '0.6rem' }}>└</span>
+                        <span style={{ color: 'rgba(var(--gold-rgb),0.35)', fontSize: '0.6rem' }}>└</span>
                         <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.44rem' }}>Sub-traço</span>
                         <span style={{
                           fontFamily: 'var(--font-cinzel)',
                           fontSize: '0.68rem',
-                          color: 'rgba(216,228,248,0.7)',
+                          color: 'rgba(var(--text-rgb),0.7)',
                         }}>
                           {sub.nome}
                         </span>
@@ -269,7 +269,7 @@ export default function Summary({
                           fontFamily: 'var(--font-im-fell)',
                           fontStyle: 'italic',
                           fontSize: '0.74rem',
-                          color: 'var(--hk-dim)',
+                          color: 'var(--text-muted)',
                         }}>
                           {sub.descricao}
                         </span>
@@ -292,15 +292,15 @@ export default function Summary({
                   fontFamily: 'var(--font-cinzel)',
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  color: trilha.tipo === 'marcial' ? 'var(--hk-gold)' : 'var(--hk-soul)',
+                  color: TRILHA_TIPO_COLOR[trilha.tipo].color,
                 }}>
                   {trilha.nome}
                 </span>
                 <span className="ddb-badge" style={{
                   fontSize: '0.48rem',
-                  color: trilha.tipo === 'marcial' ? 'var(--hk-gold)' : 'var(--hk-soul)',
-                  borderColor: trilha.tipo === 'marcial' ? 'rgba(212,168,67,0.35)' : 'rgba(74,158,255,0.35)',
-                  background: trilha.tipo === 'marcial' ? 'rgba(212,168,67,0.08)' : 'rgba(74,158,255,0.08)',
+                  color: TRILHA_TIPO_COLOR[trilha.tipo].color,
+                  borderColor: TRILHA_TIPO_COLOR[trilha.tipo].border,
+                  background: TRILHA_TIPO_COLOR[trilha.tipo].bg,
                 }}>
                   {trilha.tipo === 'marcial' ? '⚔️ Marcial' : '✨ Místico'}
                 </span>
@@ -309,7 +309,7 @@ export default function Summary({
                 fontFamily: 'var(--font-im-fell)',
                 fontStyle: 'italic',
                 fontSize: '0.85rem',
-                color: 'rgba(216,228,248,0.48)',
+                color: 'rgba(var(--text-rgb),0.48)',
                 lineHeight: 1.65,
               }}>
                 {trilha.beneficios}
@@ -322,7 +322,7 @@ export default function Summary({
       {/* Optional: Aparência */}
       <div>
         <label style={labelStyle}>
-          Aparência <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--hk-dim)', fontSize: '0.72rem' }}>(opcional)</span>
+          Aparência <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
         </label>
         <textarea
           value={sheet.aparencia}
@@ -335,7 +335,7 @@ export default function Summary({
       {/* Optional: História breve */}
       <div>
         <label style={labelStyle}>
-          História breve <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--hk-dim)', fontSize: '0.72rem' }}>(opcional)</span>
+          História breve <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
         </label>
         <textarea
           value={sheet.historia}
@@ -349,7 +349,7 @@ export default function Summary({
         fontFamily: 'var(--font-im-fell)',
         fontStyle: 'italic',
         fontSize: '0.82rem',
-        color: 'rgba(216,228,248,0.3)',
+        color: 'rgba(var(--text-rgb),0.3)',
         textAlign: 'center',
       }}>
         Revise suas escolhas acima antes de salvar. Clique em Voltar para fazer alterações.

@@ -211,14 +211,14 @@ export default function CriarPersonagem() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--hk-void)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <SiteHeader activePath="/criar-personagem" />
 
       {/* Page header */}
       <div style={{
         paddingTop: 44,
-        background: 'var(--hk-abyss)',
-        borderBottom: '1px solid rgba(74,158,255,0.08)',
+        background: 'var(--bg-secondary)',
+        borderBottom: '1px solid rgba(var(--gold-rgb),0.08)',
       }}>
         <div className="max-w-4xl mx-auto px-6 py-8">
           <nav
@@ -230,18 +230,18 @@ export default function CriarPersonagem() {
               textTransform: 'uppercase',
             }}
           >
-            <Link href="/" style={{ color: 'var(--hk-soul)' }} className="transition-opacity hover:opacity-75">
+            <Link href="/" style={{ color: 'var(--gold)' }} className="transition-opacity hover:opacity-75">
               ← Início
             </Link>
-            <span style={{ color: 'rgba(74,158,255,0.3)' }} aria-hidden>◈</span>
-            <span style={{ color: 'rgba(216,228,248,0.38)' }}>Criação de Personagem</span>
+            <span style={{ color: 'rgba(var(--gold-rgb),0.3)' }} aria-hidden>◈</span>
+            <span style={{ color: 'rgba(var(--text-rgb),0.38)' }}>Criação de Personagem</span>
           </nav>
 
           <h1 style={{
             fontFamily: 'var(--font-cinzel)',
             fontSize: 'clamp(1.15rem, 3vw, 1.8rem)',
             fontWeight: 700,
-            color: 'var(--hk-pale)',
+            color: 'var(--text)',
             marginBottom: step < 5 ? '2rem' : 0,
           }}>
             🦋 {STEP_TITLES[step - 1]}
@@ -254,10 +254,11 @@ export default function CriarPersonagem() {
                 const n = (i + 1) as 1 | 2 | 3 | 4
                 const isDone   = n < step
                 const isActive = n === step
+                const stateClass = isDone ? 'step-indicator--done' : isActive ? 'step-indicator--active' : 'step-indicator--pending'
                 return (
                   <div key={n} className="flex items-center">
                     <div className="flex flex-col items-center gap-1">
-                      <div style={{
+                      <div className={`step-indicator ${stateClass}`} style={{
                         width: 30,
                         height: 30,
                         borderRadius: '50%',
@@ -268,21 +269,6 @@ export default function CriarPersonagem() {
                         fontSize: '0.68rem',
                         fontWeight: 700,
                         transition: 'all 0.2s',
-                        background: isDone
-                          ? 'rgba(74,158,255,0.14)'
-                          : isActive
-                          ? 'rgba(212,168,67,0.15)'
-                          : 'rgba(122,138,170,0.06)',
-                        border: isDone
-                          ? '1px solid rgba(74,158,255,0.5)'
-                          : isActive
-                          ? '1px solid rgba(212,168,67,0.6)'
-                          : '1px solid rgba(122,138,170,0.18)',
-                        color: isDone
-                          ? 'var(--hk-soul)'
-                          : isActive
-                          ? 'var(--hk-gold)'
-                          : 'rgba(122,138,170,0.35)',
                       }}>
                         {isDone ? '✓' : n}
                       </div>
@@ -294,24 +280,21 @@ export default function CriarPersonagem() {
                         whiteSpace: 'nowrap',
                         transition: 'color 0.2s',
                         color: isActive
-                          ? 'var(--hk-gold)'
+                          ? 'var(--gold)'
                           : isDone
-                          ? 'var(--hk-soul)'
-                          : 'rgba(122,138,170,0.32)',
+                          ? 'var(--gold)'
+                          : 'rgba(var(--text-muted-rgb),0.6)',
                       }}>
                         {label}
                       </span>
                     </div>
                     {i < STEP_LABELS.length - 1 && (
-                      <div style={{
+                      <div className={`step-connector ${isDone ? 'step-connector--done' : ''}`} style={{
                         width: 44,
                         height: 1,
                         margin: '0 6px',
                         marginBottom: 18,
                         transition: 'background 0.2s',
-                        background: isDone
-                          ? 'rgba(74,158,255,0.32)'
-                          : 'rgba(122,138,170,0.1)',
                       }} />
                     )}
                   </div>
@@ -384,10 +367,10 @@ export default function CriarPersonagem() {
         position: 'sticky',
         bottom: 0,
         zIndex: 10,
-        background: 'rgba(8,9,15,0.96)',
+        background: 'rgba(var(--bg-rgb),0.96)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '1px solid rgba(74,158,255,0.1)',
+        borderTop: '1px solid rgba(var(--gold-rgb),0.1)',
         padding: '0.875rem 0',
       }}>
         <div className="max-w-4xl mx-auto px-6 flex items-center justify-between">
@@ -411,7 +394,7 @@ export default function CriarPersonagem() {
             fontSize: '0.52rem',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
-            color: 'var(--hk-dim)',
+            color: 'var(--text-muted)',
           }}>
             {step < 5 ? `Etapa ${step} de 4` : 'Resumo'}
           </span>

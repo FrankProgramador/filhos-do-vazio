@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 
 const OrnamentDivider = () => (
   <div className="flex items-center gap-4 my-10" aria-hidden>
-    <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.25))' }} />
-    <span style={{ color: 'var(--hk-gold)', fontSize: '0.8rem', opacity: 0.6 }}>◈</span>
-    <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, rgba(212,168,67,0.25))' }} />
+    <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, rgba(var(--gold-rgb),0.25))' }} />
+    <span style={{ color: 'var(--gold)', fontSize: '0.8rem', opacity: 0.6 }}>◈</span>
+    <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, rgba(var(--gold-rgb),0.25))' }} />
   </div>
 )
 
@@ -45,7 +45,7 @@ function IllustrationFrame({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(ellipse at 50% 50%, rgba(74,158,255,0.05) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 50% 50%, rgba(var(--gold-rgb),0.05) 0%, transparent 70%)',
           }}
           aria-hidden
         />
@@ -58,7 +58,7 @@ function IllustrationFrame({
             fontSize: '0.65rem',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'rgba(216,228,248,0.35)',
+            color: 'rgba(var(--text-rgb),0.35)',
             position: 'relative',
             zIndex: 1,
             textAlign: 'center',
@@ -73,7 +73,7 @@ function IllustrationFrame({
             fontSize: '0.52rem',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
-            color: 'rgba(122,138,170,0.4)',
+            color: 'rgba(var(--text-muted-rgb),0.4)',
             position: 'relative',
             zIndex: 1,
           }}
@@ -87,7 +87,7 @@ function IllustrationFrame({
             fontFamily: 'var(--font-im-fell)',
             fontStyle: 'italic',
             fontSize: '0.82rem',
-            color: 'rgba(216,228,248,0.35)',
+            color: 'rgba(var(--text-rgb),0.35)',
             textAlign: 'center',
             marginTop: '0.75rem',
             letterSpacing: '0.01em',
@@ -107,7 +107,7 @@ function Paragraph({ children }: { children: React.ReactNode }) {
         fontFamily: 'var(--font-im-fell)',
         fontSize: 'clamp(1rem, 1.8vw, 1.1rem)',
         lineHeight: 1.95,
-        color: 'rgba(216,228,248,0.72)',
+        color: 'rgba(var(--text-rgb),0.72)',
         marginBottom: '1.4rem',
       }}
     >
@@ -123,7 +123,7 @@ function Isolated({ children }: { children: React.ReactNode }) {
         fontFamily: 'var(--font-im-fell)',
         fontSize: 'clamp(1rem, 1.8vw, 1.1rem)',
         lineHeight: 1.95,
-        color: 'rgba(216,228,248,0.72)',
+        color: 'rgba(var(--text-rgb),0.72)',
         margin: '0.5rem 0',
       }}
     >
@@ -136,7 +136,7 @@ function Isolated({ children }: { children: React.ReactNode }) {
 
 export default function HistoriaPage() {
   return (
-    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--hk-void)' }}>
+    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <SiteHeader activePath="/historia" />
 
       {/* ── Hero / cabeçalho ───────────────────────────── */}
@@ -149,7 +149,7 @@ export default function HistoriaPage() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(212,168,67,0.06) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(var(--gold-rgb),0.06) 0%, transparent 70%)',
           }}
           aria-hidden
         />
@@ -166,18 +166,18 @@ export default function HistoriaPage() {
               textTransform: 'uppercase',
             }}
           >
-            <Link href="/" style={{ color: 'var(--hk-soul)' }} className="transition-opacity hover:opacity-80">
+            <Link href="/" style={{ color: 'var(--gold-light)' }} className="transition-opacity hover:opacity-80">
               ← Início
             </Link>
-            <span style={{ color: 'rgba(74,158,255,0.35)' }} aria-hidden>◈</span>
-            <span style={{ color: 'rgba(216,228,248,0.45)' }} aria-current="page">História</span>
+            <span className="breadcrumb-sep" aria-hidden>◈</span>
+            <span className="breadcrumb-current" aria-current="page">História</span>
           </nav>
 
           {/* Ornamento dourado */}
           <div className="flex items-center gap-4" aria-hidden>
-            <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--hk-gold))' }} />
-            <span style={{ color: 'var(--hk-gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(212,168,67,0.7)' }}>◈</span>
-            <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--hk-gold))' }} />
+            <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+            <span style={{ color: 'var(--gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(var(--gold-rgb),0.7)' }}>◈</span>
+            <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
           </div>
 
           <p
@@ -186,7 +186,7 @@ export default function HistoriaPage() {
               fontSize: '0.58rem',
               letterSpacing: '0.38em',
               textTransform: 'uppercase',
-              color: 'var(--hk-dim)',
+              color: 'var(--text-muted)',
             }}
           >
             Lore &amp; Lendas
@@ -199,7 +199,7 @@ export default function HistoriaPage() {
               fontSize: 'clamp(2rem, 5vw, 3.4rem)',
               fontWeight: 900,
               lineHeight: 1.05,
-              color: 'var(--hk-ghost)',
+              color: 'var(--text)',
             }}
           >
             História
@@ -210,7 +210,7 @@ export default function HistoriaPage() {
               fontFamily: 'var(--font-im-fell)',
               fontStyle: 'italic',
               fontSize: 'clamp(0.85rem, 1.5vw, 1rem)',
-              color: 'rgba(216,228,248,0.5)',
+              color: 'rgba(var(--text-rgb),0.5)',
               lineHeight: 1.85,
               maxWidth: 420,
             }}
@@ -220,11 +220,7 @@ export default function HistoriaPage() {
         </div>
 
         <div
-          className="w-full"
-          style={{
-            height: 1,
-            background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.18), transparent)',
-          }}
+          className="w-full divider-gold"
           aria-hidden
         />
       </section>
@@ -232,7 +228,7 @@ export default function HistoriaPage() {
       {/* ── Conteúdo principal ─────────────────────────── */}
       <main
         className="flex-1 w-full"
-        style={{ background: 'var(--hk-abyss)' }}
+        style={{ background: 'var(--bg-secondary)' }}
       >
         <article
           className="mx-auto px-6 py-16"
@@ -245,7 +241,7 @@ export default function HistoriaPage() {
               fontFamily: 'var(--font-cinzel)',
               fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)',
               fontWeight: 700,
-              color: 'var(--hk-gold)',
+              color: 'var(--gold)',
               letterSpacing: '0.06em',
               textAlign: 'center',
             }}
@@ -270,7 +266,7 @@ export default function HistoriaPage() {
           />
 
           <Paragraph>
-            Seu nome era <strong style={{ color: 'var(--hk-gold)', fontStyle: 'normal' }}>Hallownest</strong>.
+            Seu nome era <strong style={{ color: 'var(--gold)', fontStyle: 'normal' }}>Hallownest</strong>.
           </Paragraph>
 
           <Paragraph>
@@ -341,8 +337,8 @@ export default function HistoriaPage() {
             style={{
               margin: '2.5rem 0',
               padding: '1.5rem 2rem',
-              borderLeft: '3px solid rgba(212,168,67,0.5)',
-              background: 'linear-gradient(to right, rgba(212,168,67,0.05), transparent)',
+              borderLeft: '3px solid rgba(var(--gold-rgb),0.5)',
+              background: 'linear-gradient(to right, rgba(var(--gold-rgb),0.05), transparent)',
               borderRadius: '0 8px 8px 0',
             }}
           >
@@ -351,7 +347,7 @@ export default function HistoriaPage() {
                 fontFamily: 'var(--font-im-fell)',
                 fontStyle: 'italic',
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: 'rgba(216,228,248,0.8)',
+                color: 'rgba(var(--text-rgb),0.8)',
                 lineHeight: 1.8,
                 margin: 0,
               }}
@@ -370,7 +366,7 @@ export default function HistoriaPage() {
 
           <Paragraph>
             Agora existe apenas{' '}
-            <strong style={{ color: 'var(--hk-soul)', fontStyle: 'normal' }}>Vespera</strong>.
+            <strong style={{ color: 'var(--gold-light)', fontStyle: 'normal' }}>Vespera</strong>.
           </Paragraph>
 
           <Paragraph>Um reino construído sobre ruínas ainda mais antigas.</Paragraph>
@@ -399,12 +395,12 @@ export default function HistoriaPage() {
             className="mt-16 flex flex-col items-center gap-4 text-center"
             style={{
               padding: '2rem',
-              border: '1px solid rgba(74,158,255,0.1)',
+              border: '1px solid rgba(var(--gold-rgb),0.1)',
               borderRadius: 12,
-              background: 'rgba(74,158,255,0.03)',
+              background: 'rgba(var(--gold-rgb),0.03)',
             }}
           >
-            <span style={{ color: 'var(--hk-soul)', fontSize: '1.5rem', opacity: 0.4 }} aria-hidden>
+            <span style={{ color: 'var(--gold-light)', fontSize: '1.5rem', opacity: 0.4 }} aria-hidden>
               ◈
             </span>
             <p
@@ -413,7 +409,7 @@ export default function HistoriaPage() {
                 fontSize: '0.65rem',
                 letterSpacing: '0.25em',
                 textTransform: 'uppercase',
-                color: 'rgba(122,138,170,0.5)',
+                color: 'rgba(var(--text-muted-rgb),0.5)',
               }}
             >
               A história continua
@@ -423,7 +419,7 @@ export default function HistoriaPage() {
                 fontFamily: 'var(--font-im-fell)',
                 fontStyle: 'italic',
                 fontSize: '0.9rem',
-                color: 'rgba(216,228,248,0.3)',
+                color: 'rgba(var(--text-rgb),0.3)',
                 maxWidth: 360,
               }}
             >

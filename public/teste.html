@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Como Jogar - Filhos do Vazio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f1a;
+            font-family: 'Segoe UI', 'Roboto', 'Montserrat', system-ui, -apple-system, sans-serif;
+            color: #e2e8f0;
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* cabeçalho */
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #f3c68e, #b87c3a);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            letter-spacing: 1px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #8ba0b0;
+            max-width: 700px;
+            margin: 0.5rem auto 0;
+        }
+
+        /* cards */
+        .card {
+            background: #11171f;
+            border: 1px solid #2a3a44;
+            border-radius: 24px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            transition: transform 0.1s ease;
+        }
+
+        .card h2 {
+            color: #f3c68e;
+            border-left: 5px solid #e09d32;
+            padding-left: 1rem;
+            margin-bottom: 1.2rem;
+            font-size: 1.7rem;
+        }
+
+        .card h3 {
+            color: #cbae76;
+            margin: 1rem 0 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .example-box {
+            background: #0c1118;
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-left: 4px solid #e09d32;
+        }
+
+        .stat-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+            background: #0a1017;
+            padding: 0.8rem;
+            border-radius: 16px;
+        }
+
+        .stat {
+            background: #1a2530;
+            padding: 0.3rem 0.8rem;
+            border-radius: 40px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        button, .dice-button {
+            background: #2d3e4b;
+            border: none;
+            color: #f0e6d0;
+            font-weight: bold;
+            padding: 0.5rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 0.7rem;
+            margin-top: 0.5rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            background: #4a6f82;
+            transform: translateY(-2px);
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .quiz-btn {
+            background: #1e2a32;
+            padding: 0.6rem 1.5rem;
+            border-radius: 60px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.1s;
+            border: 1px solid #3c5a68;
+        }
+
+        .quiz-btn.selected {
+            background: #b87c3a;
+            border-color: #f3c68e;
+            color: #0a0f1a;
+        }
+
+        .result-area {
+            background: #0b1119;
+            border-radius: 18px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            border: 1px dashed #4c6a7a;
+        }
+
+        .dice {
+            display: inline-block;
+            background: #1a2a2f;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            line-height: 32px;
+            border-radius: 8px;
+            margin: 0 2px;
+            font-weight: bold;
+            color: #f3c68e;
+        }
+
+        .success {
+            color: #9bdeac;
+        }
+
+        .fail {
+            color: #e07c6c;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #5f7f8c;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            body { padding: 1rem; }
+            .hero h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="hero">
+        <h1>⚔️ COMO JOGAR ⚔️</h1>
+        <p>Regras essenciais de movimento, testes e combate. Role dados e domine o Vazio.</p>
+    </div>
+
+    <!-- SEÇÃO MOVIMENTO -->
+    <div class="card">
+        <h2>🏃 MOVIMENTO E VELOCIDADE</h2>
+        <p>Seu inseto pode se mover um número de <strong>quadrados</strong> igual à sua <strong>Velocidade</strong> por turno. Movimento diagonal custa 1 quadrado também.</p>
+        <div class="example-box">
+            <strong>📘 Exemplo – Vespa (Velocidade 6):</strong> Ela quer atravessar uma ponte quebrada. Se ela gastar 4 quadrados para chegar até a fenda, ainda sobram 2 quadrados de movimento. Ela pode saltar sobre o vão com uma ação de pulo (gasta 1 Estamina) ou simplesmente mover os 2 restantes.
+            <div class="stat-grid">
+                <span class="stat">Velocidade: 6</span>
+                <span class="stat">Deslocamento seguro: 3 (não sofre ataque ao sair de ameaça até 3q)</span>
+            </div>
+        </div>
+        <h3>🎯 Desafio interativo: Escolha a opção correta</h3>
+        <p><em>Contexto:</em> Um inseto Médio com Velocidade 5 está a 3 quadrados de um inimigo. Ele quer atravessar o inimigo e ir para o lado oposto, mas o inimigo bloqueia o caminho. O que ele pode fazer?</p>
+        <div class="quiz-options" id="quizMovimento">
+            <div class="quiz-btn" data-value="A">A) Gasta 1 Estamina para Desengajar e move 2 quadrados sem provocar ataque.</div>
+            <div class="quiz-btn" data-value="B">B) Não pode passar, só combatendo.</div>
+            <div class="quiz-btn" data-value="C">C) Move normalmente, pois todo movimento é livre.</div>
+        </div>
+        <div id="movimentoResult" class="result-area" style="display:none;"></div>
+        <button id="simularMovimentoBtn">🎲 Simular rolagem de iniciativa (exemplo)</button>
+        <div id="diceMovimento" class="result-area" style="margin-top:0.8rem; display:none;"></div>
+    </div>
+
+    <!-- SEÇÃO TESTES DE ATRIBUTO -->
+    <div class="card">
+        <h2>📜 TESTES DE ATRIBUTO</h2>
+        <p>Para ações arriscadas, role dados = Atributo + Perícia. Cada <strong>5 ou 6</strong> é um sucesso. Atributos com <strong>.5</strong> dão uma rerolagem.</p>
+        <div class="example-box">
+            <strong>🏔️ Exemplo – Escalada:</strong> Vespa (Poder 3, Atletismo 1) quer escalar uma parede escorregadia (Dificuldade 2). Ela rola 4 dados (3+1). Precisa de 2 sucessos.
+            <div style="margin-top: 10px;">
+                <button id="rolarEscaladaBtn">🧗‍♀️ Rolar para escalar (4d6)</button>
+                <span id="escaladaResult"></span>
+            </div>
+        </div>
+        <h3>🧠 Desafio: qual atributo usar para enganar um guarda?</h3>
+        <div class="quiz-options" id="quizTeste">
+            <div class="quiz-btn" data-value="A">A) Poder</div>
+            <div class="quiz-btn" data-value="B">B) Graça</div>
+            <div class="quiz-btn" data-value="C">C) Saber</div>
+        </div>
+        <div id="testeResult" class="result-area" style="display:none;"></div>
+    </div>
+
+    <!-- SEÇÃO COMBATE BÁSICO -->
+    <div class="card">
+        <h2>⚔️ COMBATE: ATAQUE, DEFESA E DANO</h2>
+        <p>Atacar custa 1 Estamina (pode dedicar mais). Rola Poder/Graça + Qualidade da arma + Estamina dedicada. Defesa pode ser <strong>aparar (Poder)</strong> ou <strong>esquiva (Graça)</strong>. Cada sucesso defensivo anula um sucesso ofensivo. Dano restante é amortecido com Casca.</p>
+        <div class="example-box">
+            <strong>🐞 Confronto direto – Besouro x Vespa</strong><br>
+            Vespa ataca com Ferrão (Qualidade 1, Poder 3, gasta 2 Estamina dedicada → +2 dados). Total dados: 3+1+2 = 6 dados. O Besouro tenta aparar com Poder 2 + escudo (qualidade 1) + 1 Estamina dedicada = 4 dados. Vamos simular!
+            <div style="margin:1rem 0;">
+                <button id="simularAtaqueBtn">🎲 Simular ataque vs defesa</button>
+            </div>
+            <div id="combateResult" class="result-area"></div>
+        </div>
+        <h3>🤺 Pergunta de combate</h3>
+        <p><em>Contexto:</em> Inimigo rola 3 sucessos no ataque. Você rola 1 sucesso na defesa. Quantos sucessos ainda atingem você (antes do amortecimento)?</p>
+        <div class="quiz-options" id="quizCombate">
+            <div class="quiz-btn" data-value="A">A) 2 sucessos</div>
+            <div class="quiz-btn" data-value="B">B) 3 sucessos</div>
+            <div class="quiz-btn" data-value="C">C) 1 sucesso</div>
+        </div>
+        <div id="combateQuizResult" class="result-area" style="display:none;"></div>
+    </div>
+
+    <!-- EXTRA: Rolagem de dados demonstrativa -->
+    <div class="card">
+        <h2>🎲 SIMULADOR DE DADOS (D6)</h2>
+        <p>Teste a sorte! Role qualquer quantidade de dados e veja os sucessos (5 ou 6).</p>
+        <div>
+            <label>Quantidade de dados: </label>
+            <input type="number" id="diceQtd" min="1" max="20" value="4" style="width:70px; background:#1e2a32; color:white; border:1px solid #3c5a68; border-radius:12px; padding:4px;">
+            <button id="rollGenericBtn">Rolar!</button>
+        </div>
+        <div id="genericRollResult" class="result-area" style="margin-top:1rem;">Clique no botão para rolar.</div>
+    </div>
+    <footer>
+        🕷️ Filhos do Vazio – Sistema inspirado no mundo dos insetos decadentes. Dados de 6 faces, sucesso em 5+.
+    </footer>
+</div>
+
+<script>
+    // Função auxiliar para rolagem de dados
+    function rollDice(count) {
+        let results = [];
+        let successes = 0;
+        for (let i = 0; i < count; i++) {
+            let roll = Math.floor(Math.random() * 6) + 1;
+            results.push(roll);
+            if (roll >= 5) successes++;
+        }
+        return { results, successes };
+    }
+
+    // Formata resultado visual
+    function formatRoll(results, successes) {
+        let diceHtml = results.map(r => `<span class="dice">${r}</span>`).join('');
+        let status = successes > 0 ? `<span class="success">✓ ${successes} sucesso(s)</span>` : `<span class="fail">✗ Nenhum sucesso</span>`;
+        return `${diceHtml}<br>${status}`;
+    }
+
+    // --- Movimento Quiz ---
+    const movimentoBtns = document.querySelectorAll('#quizMovimento .quiz-btn');
+    let movimentoSelected = null;
+    movimentoBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            movimentoBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            movimentoSelected = btn.getAttribute('data-value');
+        });
+    });
+    document.getElementById('simularMovimentoBtn').addEventListener('click', () => {
+        const area = document.getElementById('diceMovimento');
+        const { results, successes } = rollDice(3);
+        area.style.display = 'block';
+        area.innerHTML = `<strong>🎲 Rolagem de Iniciativa para atravessar:</strong> <br> ${formatRoll(results, successes)} <br> (Iniciativa usa soma, não sucessos, mas serve para demonstrar a sorte.)`;
+    });
+    function checkMovimento() {
+        const resultDiv = document.getElementById('movimentoResult');
+        if (!movimentoSelected) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⚠️ Selecione uma opção primeiro.';
+            return;
+        }
+        const correct = (movimentoSelected === 'A');
+        if (correct) {
+            resultDiv.innerHTML = '✅ <strong>Correto!</strong> A ação Desengajar custa 1 Estamina e permite mover 2 quadrados sem provocar ataques de oportunidade. Depois fica desequilibrado, mas é a forma segura.';
+        } else {
+            resultDiv.innerHTML = '❌ <strong>Errado.</strong> A opção correta é A: Desengajar (gasta 1 Estamina) para mover sem provocar ataque.';
+        }
+        resultDiv.style.display = 'block';
+    }
+    document.getElementById('simularMovimentoBtn').addEventListener('click', checkMovimento); // mostrar também ao rolar, mas ja chama
+    // melhor: associar ao clique nos botões de resposta? Vou adicionar evento de resposta também.
+    movimentoBtns.forEach(btn => btn.addEventListener('click', () => checkMovimento()));
+
+    // --- Teste de Atributo Quiz ---
+    const testeBtns = document.querySelectorAll('#quizTeste .quiz-btn');
+    let testeSelected = null;
+    testeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            testeBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            testeSelected = btn.getAttribute('data-value');
+            checkTeste();
+        });
+    });
+    function checkTeste() {
+        const resultDiv = document.getElementById('testeResult');
+        if (!testeSelected) return;
+        const correct = (testeSelected === 'C');
+        if (correct) {
+            resultDiv.innerHTML = '✅ <strong>Correto!</strong> Enganação usa Saber (percepção, inteligência) + perícia Enganação.';
+        } else {
+            resultDiv.innerHTML = '❌ <strong>Errado.</strong> Enganar alguém usa Saber (para mentir com credibilidade). Graça ajuda em disfarces físicos, mas o teste social principal é Saber.';
+        }
+        resultDiv.style.display = 'block';
+    }
+
+    // Rolagem exemplo escalada
+    document.getElementById('rolarEscaladaBtn').addEventListener('click', () => {
+        const { results, successes } = rollDice(4);
+        const span = document.getElementById('escaladaResult');
+        const dificuldade = 2;
+        const passou = successes >= dificuldade;
+        span.innerHTML = `<br>${formatRoll(results, successes)} → ${passou ? '🏆 Escalada bem sucedida! Você sobe a parede.' : '💧 Escorregou... Tome 1 de dano de queda (1 Coração).'}`;
+    });
+
+    // --- Combate exemplo simulação ataque vs defesa ---
+    document.getElementById('simularAtaqueBtn').addEventListener('click', () => {
+        const ataqueDados = 6;
+        const defesaDados = 4;
+        const ataqueRoll = rollDice(ataqueDados);
+        const defesaRoll = rollDice(defesaDados);
+        let sucessosAtaque = ataqueRoll.successes;
+        let sucessosDefesa = defesaRoll.successes;
+        let sucessosRestantes = Math.max(0, sucessosAtaque - sucessosDefesa);
+        let danoBase = 2; // dano base do Ferrão
+        let risco = danoBase + sucessosRestantes;
+        // amortece com Casca (simulada com 3 dados)
+        let amortRoll = rollDice(3);
+        let danoFinal = Math.max(0, risco - amortRoll.successes);
+        let resultadoHtml = `
+            <strong>⚔️ ATAQUE (6d6):</strong> ${formatRoll(ataqueRoll.results, ataqueRoll.successes)}<br>
+            <strong>🛡️ DEFESA (4d6):</strong> ${formatRoll(defesaRoll.results, defesaRoll.successes)}<br>
+            <strong>💥 Sucessos líquidos:</strong> ${sucessosRestantes}<br>
+            <strong>⚡ Risco de dano:</strong> ${danoBase} + ${sucessosRestantes} = ${risco}<br>
+            <strong>🪨 Amortecimento (Casca 3):</strong> ${formatRoll(amortRoll.results, amortRoll.successes)}<br>
+            <strong>❤️ Dano final:</strong> ${danoFinal} Corações
+        `;
+        document.getElementById('combateResult').innerHTML = resultadoHtml;
+    });
+
+    // Quiz combate
+    const combateBtns = document.querySelectorAll('#quizCombate .quiz-btn');
+    let combateSelected = null;
+    combateBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            combateBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            combateSelected = btn.getAttribute('data-value');
+            checkCombateQuiz();
+        });
+    });
+    function checkCombateQuiz() {
+        const resultDiv = document.getElementById('combateQuizResult');
+        if (!combateSelected) return;
+        const correct = (combateSelected === 'A');
+        if (correct) {
+            resultDiv.innerHTML = '✅ Correto! Cada sucesso defensivo anula um ofensivo. 3 - 1 = 2 sucessos restantes que causam dano (antes do amortecimento).';
+        } else {
+            resultDiv.innerHTML = '❌ O correto é A: 2 sucessos (3 ataque - 1 defesa = 2).';
+        }
+        resultDiv.style.display = 'block';
+    }
+
+    // Rolagem genérica
+    document.getElementById('rollGenericBtn').addEventListener('click', () => {
+        let qtd = parseInt(document.getElementById('diceQtd').value);
+        if (isNaN(qtd) || qtd < 1) qtd = 1;
+        if (qtd > 20) qtd = 20;
+        const { results, successes } = rollDice(qtd);
+        document.getElementById('genericRollResult').innerHTML = formatRoll(results, successes);
+    });
+
+    // inicializar alguns resultados vazios
+    document.getElementById('escaladaResult').innerHTML = '';
+</script>
+</body>
+</html>

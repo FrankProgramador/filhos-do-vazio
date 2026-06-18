@@ -104,27 +104,27 @@ const faccoes: Faccao[] = [
 const relacaoConfig: Record<Relacao, { label: string; color: string; border: string; bg: string }> = {
   aliada: {
     label: 'Potencial Aliada',
-    color: 'rgba(74,158,255,0.9)',
-    border: 'rgba(74,158,255,0.35)',
-    bg: 'rgba(74,158,255,0.08)',
+    color: 'rgba(var(--success-rgb),0.9)',
+    border: 'rgba(var(--success-rgb),0.35)',
+    bg: 'rgba(var(--success-rgb),0.08)',
   },
   neutra: {
     label: 'Neutra',
-    color: 'rgba(212,168,67,0.9)',
-    border: 'rgba(212,168,67,0.35)',
-    bg: 'rgba(212,168,67,0.08)',
+    color: 'rgba(var(--text-muted-rgb),0.9)',
+    border: 'rgba(var(--text-muted-rgb),0.35)',
+    bg: 'rgba(var(--text-muted-rgb),0.08)',
   },
   ambigua: {
     label: 'Ambígua',
-    color: 'rgba(180,100,220,0.9)',
-    border: 'rgba(180,100,220,0.35)',
-    bg: 'rgba(180,100,220,0.08)',
+    color: 'rgba(var(--void-light-rgb),0.9)',
+    border: 'rgba(var(--void-light-rgb),0.35)',
+    bg: 'rgba(var(--void-light-rgb),0.08)',
   },
   perigosa: {
     label: 'Perigosa',
-    color: 'rgba(220,80,80,0.9)',
-    border: 'rgba(220,80,80,0.35)',
-    bg: 'rgba(220,80,80,0.08)',
+    color: 'rgba(var(--error-rgb),0.9)',
+    border: 'rgba(var(--error-rgb),0.35)',
+    bg: 'rgba(var(--error-rgb),0.08)',
   },
 }
 
@@ -132,9 +132,9 @@ const relacaoConfig: Record<Relacao, { label: string; color: string; border: str
 
 const OrnamentDivider = () => (
   <div className="flex items-center gap-4" aria-hidden>
-    <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--hk-gold))' }} />
-    <span style={{ color: 'var(--hk-gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(212,168,67,0.7)' }}>◈</span>
-    <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--hk-gold))' }} />
+    <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+    <span style={{ color: 'var(--gold)', fontSize: '0.95rem', opacity: 0.85, textShadow: '0 0 10px rgba(var(--gold-rgb),0.7)' }}>◈</span>
+    <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
   </div>
 )
 
@@ -144,7 +144,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
   return (
     <article
       className="flex flex-col rounded-xl overflow-hidden group transition-all duration-200"
-      style={{ background: 'var(--hk-deep)', border: '1px solid rgba(74,158,255,0.12)' }}
+      style={{ background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.12)' }}
     >
       {/* Linha colorida no topo no hover */}
       <div
@@ -160,8 +160,8 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
         aria-label={faccao.altImagem}
         style={{
           aspectRatio: '21 / 9',
-          background: 'linear-gradient(160deg, #0f1628 0%, #0b0d1a 100%)',
-          borderBottom: '1px solid rgba(74,158,255,0.1)',
+          background: 'linear-gradient(160deg, var(--bg-secondary) 0%, var(--bg) 100%)',
+          borderBottom: '1px solid rgba(var(--gold-rgb),0.1)',
           overflow: 'hidden',
         }}
       >
@@ -183,7 +183,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
             fontSize: '0.6rem',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            color: 'var(--hk-dim)',
+            color: 'var(--text-muted)',
             position: 'relative',
             zIndex: 1,
           }}
@@ -202,7 +202,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
               fontFamily: 'var(--font-cinzel)',
               fontSize: '1rem',
               fontWeight: 700,
-              color: 'var(--hk-gold)',
+              color: 'var(--gold)',
               letterSpacing: '0.05em',
               lineHeight: 1.3,
             }}
@@ -219,7 +219,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
           style={{
             fontFamily: 'var(--font-im-fell)',
             fontStyle: 'italic',
-            color: 'rgba(216,228,248,0.6)',
+            color: 'rgba(var(--text-rgb),0.6)',
             fontSize: '0.88rem',
             lineHeight: 1.6,
             borderLeft: `2px solid ${rel.border}`,
@@ -238,7 +238,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
               fontSize: '0.55rem',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: 'var(--hk-soul)',
+              color: 'var(--gold-light)',
               paddingTop: '0.1rem',
               minWidth: '4.5rem',
             }}
@@ -249,7 +249,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
             style={{
               fontFamily: 'var(--font-im-fell)',
               fontSize: '0.87rem',
-              color: 'rgba(216,228,248,0.55)',
+              color: 'rgba(var(--text-rgb),0.55)',
               lineHeight: 1.7,
             }}
           >
@@ -266,7 +266,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
               fontSize: '0.55rem',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
-              color: 'var(--hk-soul)',
+              color: 'var(--gold-light)',
               paddingTop: '0.1rem',
               minWidth: '4.5rem',
             }}
@@ -277,7 +277,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
             style={{
               fontFamily: 'var(--font-im-fell)',
               fontSize: '0.87rem',
-              color: 'rgba(216,228,248,0.55)',
+              color: 'rgba(var(--text-rgb),0.55)',
               lineHeight: 1.7,
             }}
           >
@@ -288,7 +288,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
         {/* Relação + gancho no rodapé */}
         <div
           className="flex flex-col gap-3 mt-auto pt-4"
-          style={{ borderTop: '1px solid rgba(74,158,255,0.08)' }}
+          style={{ borderTop: '1px solid rgba(var(--gold-rgb),0.08)' }}
         >
           {/* Badge de relação */}
           <div className="flex items-center gap-2.5">
@@ -298,7 +298,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
                 fontSize: '0.55rem',
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
-                color: 'var(--hk-dim)',
+                color: 'var(--text-muted)',
               }}
             >
               Relação
@@ -326,7 +326,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
               fontFamily: 'var(--font-im-fell)',
               fontStyle: 'italic',
               fontSize: '0.82rem',
-              color: 'rgba(216,228,248,0.45)',
+              color: 'rgba(var(--text-rgb),0.45)',
               lineHeight: 1.5,
             }}
           >
@@ -342,7 +342,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
                   fontSize: '0.55rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  color: 'var(--hk-gold)',
+                  color: 'var(--gold)',
                   opacity: 0.8,
                   marginBottom: '0.25rem',
                 }}
@@ -354,7 +354,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
                   fontFamily: 'var(--font-im-fell)',
                   fontStyle: 'italic',
                   fontSize: '0.82rem',
-                  color: 'rgba(216,228,248,0.45)',
+                  color: 'rgba(var(--text-rgb),0.45)',
                   lineHeight: 1.5,
                 }}
               >
@@ -367,9 +367,9 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
                 fontSize: '0.7rem',
                 padding: '0.6rem 1.2rem',
                 borderRadius: 6,
-                background: 'rgba(122,138,170,0.06)',
-                borderColor: 'rgba(122,138,170,0.2)',
-                color: 'rgba(122,138,170,0.35)',
+                background: 'rgba(var(--text-muted-rgb),0.06)',
+                borderColor: 'rgba(var(--text-muted-rgb),0.2)',
+                color: 'rgba(var(--text-muted-rgb),0.35)',
                 cursor: 'not-allowed',
                 pointerEvents: 'none',
                 letterSpacing: '0.1em',
@@ -391,7 +391,7 @@ function FaccaoCard({ faccao }: { faccao: Faccao }) {
 
 export default function FaccoesPage() {
   return (
-    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--hk-void)' }}>
+    <div className="relative min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <SiteHeader activePath="/faccoes" />
 
       {/* ── Hero / cabeçalho ───────────────────────────── */}
@@ -402,7 +402,7 @@ export default function FaccoesPage() {
       >
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(74,158,255,0.07) 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(var(--gold-rgb),0.07) 0%, transparent 70%)' }}
           aria-hidden
         />
 
@@ -413,27 +413,27 @@ export default function FaccoesPage() {
             aria-label="Navegação estrutural"
             style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
           >
-            <Link href="/" style={{ color: 'var(--hk-soul)' }} className="transition-opacity hover:opacity-80">
+            <Link href="/" style={{ color: 'var(--gold-light)' }} className="transition-opacity hover:opacity-80">
               ← Início
             </Link>
-            <span style={{ color: 'rgba(74,158,255,0.35)' }} aria-hidden>◈</span>
-            <span style={{ color: 'rgba(216,228,248,0.45)' }} aria-current="page">Facções</span>
+            <span className="breadcrumb-sep" aria-hidden>◈</span>
+            <span className="breadcrumb-current" aria-current="page">Facções</span>
           </nav>
 
           <OrnamentDivider />
 
-          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--hk-dim)' }}>
+          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', letterSpacing: '0.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
             Poderes que movem o reino
           </p>
 
           <h1
-            className="soul-glow"
-            style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 5vw, 3.4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--hk-ghost)' }}
+            className="gold-glow"
+            style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 5vw, 3.4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)' }}
           >
             Facções
           </h1>
 
-          <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(0.85rem, 1.5vw, 1rem)', color: 'rgba(216,228,248,0.6)', lineHeight: 1.85, maxWidth: 480 }}>
+          <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(0.85rem, 1.5vw, 1rem)', color: 'rgba(var(--text-rgb),0.6)', lineHeight: 1.85, maxWidth: 480 }}>
             Cinco forças disputam o futuro do reino nas sombras.<br />
             Cada aliança tem seu preço — cada traição, suas consequências.
           </p>
@@ -462,8 +462,7 @@ export default function FaccoesPage() {
         </div>
 
         <div
-          className="w-full"
-          style={{ height: 1, background: 'linear-gradient(to right, transparent, rgba(212,168,67,0.18), transparent)' }}
+          className="w-full divider-gold"
           aria-hidden
         />
       </section>
@@ -471,7 +470,7 @@ export default function FaccoesPage() {
       {/* ── Grade de facções ───────────────────────────── */}
       <main
         className="flex-1 mx-auto w-full px-4 sm:px-6 py-16"
-        style={{ maxWidth: 1200, background: 'var(--hk-abyss)' }}
+        style={{ maxWidth: 1200, background: 'var(--bg-secondary)' }}
       >
         <div className="flex flex-col items-center gap-3 mb-12">
           <p
@@ -481,12 +480,13 @@ export default function FaccoesPage() {
             Cinco Facções
           </p>
           <h2
-            style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--hk-pale)', textAlign: 'center', textShadow: '0 0 24px rgba(74,158,255,0.18)' }}
+            className="section-heading-glow"
+            style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--text)', textAlign: 'center' }}
           >
             As Forças do Vazio
           </h2>
           <p
-            style={{ textAlign: 'center', color: 'rgba(216,228,248,0.5)', fontSize: '0.92rem', maxWidth: 520, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}
+            style={{ textAlign: 'center', color: 'rgba(var(--text-rgb),0.5)', fontSize: '0.92rem', maxWidth: 520, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}
           >
             Aliadas, inimigas ou algo entre os dois — nenhuma facção é simples o suficiente para um único rótulo.
           </p>
