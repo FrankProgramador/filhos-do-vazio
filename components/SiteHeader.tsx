@@ -13,11 +13,11 @@ const SoulLogo = () => (
 )
 
 const navLinks = [
-  { href: '/locais',    label: 'Mundo' },
+  { href: '/locais',       label: 'Mundo' },
+  { href: '/como-jogar',   label: 'Como Jogar' },
   { href: '/criar-personagem', label: 'Criação de Personagem' },
-  { href: '/#legado',   label: 'Minhas Fichas' },
-  { href: '/#partidas', label: 'Campanhas' },
-  { href: '/#sistema',  label: 'Sistema' },
+  { href: '/#legado',      label: 'Minhas Fichas' },
+  { href: '/#partidas',    label: 'Campanhas' },
 ]
 
 export default function SiteHeader({ activePath }: { activePath?: string }) {
