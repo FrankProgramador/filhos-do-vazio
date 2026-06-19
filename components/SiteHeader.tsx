@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useAuth } from '@/app/lib/auth-context'
 
 const SoulLogo = () => (
   <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden>
@@ -22,6 +24,14 @@ const navLinks = [
 
 export default function SiteHeader({ activePath }: { activePath?: string }) {
   const [open, setOpen] = useState(false)
+  const { user, isLoading, logout } = useAuth()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await logout()
+    setOpen(false)
+    router.push('/')
+  }
 
   return (
     <>
@@ -63,18 +73,35 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
                 {label}
               </Link>
             ))}
-            <Link
-              href="#"
-              className="ddb-nav-link ml-2 shrink-0"
-              style={{
-                color: 'var(--gold)',
-                border: '1px solid rgba(var(--gold-rgb),0.35)',
-                background: 'rgba(var(--gold-rgb),0.06)',
-                borderRadius: 4,
-              }}
-            >
-              Entrar
-            </Link>
+            {!isLoading && (
+              user ? (
+                <button
+                  onClick={handleLogout}
+                  className="ddb-nav-link ml-2 shrink-0 border-0 bg-transparent cursor-pointer"
+                  style={{
+                    color: 'var(--gold)',
+                    border: '1px solid rgba(var(--gold-rgb),0.35)',
+                    background: 'rgba(var(--gold-rgb),0.06)',
+                    borderRadius: 4,
+                  }}
+                >
+                  Sair ({user.name})
+                </button>
+              ) : (
+                <Link
+                  href="/entrar"
+                  className="ddb-nav-link ml-2 shrink-0"
+                  style={{
+                    color: 'var(--gold)',
+                    border: '1px solid rgba(var(--gold-rgb),0.35)',
+                    background: 'rgba(var(--gold-rgb),0.06)',
+                    borderRadius: 4,
+                  }}
+                >
+                  Entrar
+                </Link>
+              )
+            )}
           </nav>
 
           <button
@@ -130,14 +157,26 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
               {label}
             </Link>
           ))}
-          <Link
-            href="#"
-            className="ddb-nav-link py-3 rounded"
-            style={{ color: 'var(--gold)' }}
-            onClick={() => setOpen(false)}
-          >
-            Entrar
-          </Link>
+          {!isLoading && (
+            user ? (
+              <button
+                onClick={handleLogout}
+                className="ddb-nav-link py-3 rounded text-left border-0 bg-transparent cursor-pointer"
+                style={{ color: 'var(--gold)' }}
+              >
+                Sair ({user.name})
+              </button>
+            ) : (
+              <Link
+                href="/entrar"
+                className="ddb-nav-link py-3 rounded"
+                style={{ color: 'var(--gold)' }}
+                onClick={() => setOpen(false)}
+              >
+                Entrar
+              </Link>
+            )
+          )}
         </nav>
       )}
     </>
