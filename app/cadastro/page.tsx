@@ -25,7 +25,7 @@ export default function CadastroPage() {
 
     try {
       await register({ name, email, password, password_confirmation: passwordConfirmation })
-      router.push('/')
+      router.push('/painel')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível criar a conta. Tente novamente.')
     } finally {

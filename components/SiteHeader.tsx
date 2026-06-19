@@ -75,18 +75,23 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
             ))}
             {!isLoading && (
               user ? (
-                <button
-                  onClick={handleLogout}
-                  className="ddb-nav-link ml-2 shrink-0 border-0 bg-transparent cursor-pointer"
-                  style={{
-                    color: 'var(--gold)',
-                    border: '1px solid rgba(var(--gold-rgb),0.35)',
-                    background: 'rgba(var(--gold-rgb),0.06)',
-                    borderRadius: 4,
-                  }}
-                >
-                  Sair ({user.name})
-                </button>
+                <>
+                  <Link href="/painel" className="ddb-nav-link ml-2 shrink-0">
+                    Painel
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="ddb-nav-link shrink-0 border-0 bg-transparent cursor-pointer"
+                    style={{
+                      color: 'var(--gold)',
+                      border: '1px solid rgba(var(--gold-rgb),0.35)',
+                      background: 'rgba(var(--gold-rgb),0.06)',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Sair ({user.name})
+                  </button>
+                </>
               ) : (
                 <Link
                   href="/entrar"
@@ -159,13 +164,23 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
           ))}
           {!isLoading && (
             user ? (
-              <button
-                onClick={handleLogout}
-                className="ddb-nav-link py-3 rounded text-left border-0 bg-transparent cursor-pointer"
-                style={{ color: 'var(--gold)' }}
-              >
-                Sair ({user.name})
-              </button>
+              <>
+                <Link
+                  href="/painel"
+                  className="ddb-nav-link py-3 rounded"
+                  style={{ color: 'var(--gold)' }}
+                  onClick={() => setOpen(false)}
+                >
+                  Painel
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="ddb-nav-link py-3 rounded text-left border-0 bg-transparent cursor-pointer"
+                  style={{ color: 'var(--gold)' }}
+                >
+                  Sair ({user.name})
+                </button>
+              </>
             ) : (
               <Link
                 href="/entrar"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
+import { IconHome, IconLogout, IconMenu } from '@/components/dashboard/icons'
 
 export const metadata: Metadata = {
   title: 'Style Guide – Filhos do Vazio',
@@ -244,6 +245,36 @@ export default function StyleGuidePage() {
               <span className="breadcrumb-sep">◈</span>
               <span className="breadcrumb-current">Página atual</span>
             </nav>
+          </div>
+        </Section>
+
+        {/* ── Painel (app shell) ──────────────────────────── */}
+        <Section title="Painel — itens de navegação">
+          <div className="flex flex-col gap-2" style={{ maxWidth: 260, background: 'var(--bg-secondary)', padding: '0.65rem', borderRadius: 8 }}>
+            <a href="#" className="dash-nav-item active">
+              <IconHome className="dash-nav-icon" />
+              <span className="dash-nav-label">.dash-nav-item.active</span>
+            </a>
+            <a href="#" className="dash-nav-item">
+              <IconHome className="dash-nav-icon" />
+              <span className="dash-nav-label">.dash-nav-item</span>
+            </a>
+          </div>
+        </Section>
+
+        <Section title="Painel — topbar e avatar">
+          <div className="dash-topbar" style={{ position: 'static', maxWidth: 480, borderRadius: 8 }}>
+            <div className="flex items-center gap-3">
+              <button className="dash-icon-btn" aria-label="Menu"><IconMenu /></button>
+              <span className="dash-topbar-title">.dash-topbar-title</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="dash-user-chip">
+                <span className="dash-avatar">A</span>
+                <span className="dash-user-name">.dash-avatar + .dash-user-name</span>
+              </div>
+              <button className="dash-icon-btn" aria-label="Sair"><IconLogout /></button>
+            </div>
           </div>
         </Section>
 

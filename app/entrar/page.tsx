@@ -23,7 +23,7 @@ export default function EntrarPage() {
 
     try {
       await login(email, password)
-      router.push('/')
+      router.push('/painel')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível entrar. Tente novamente.')
     } finally {
