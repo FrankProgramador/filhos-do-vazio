@@ -23,9 +23,17 @@ type ResetPasswordParams = {
   password_confirmation: string
 }
 
+type RegisterParams = {
+  name: string
+  email: string
+  password: string
+  password_confirmation: string
+}
+
 type AuthContextValue = {
   user: AuthUser | null
   isLoading: boolean
+  register: (params: RegisterParams) => Promise<void>
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   forgotPassword: (email: string) => Promise<ForgotPasswordResponse>
@@ -57,6 +65,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null)
       })
       .finally(() => setIsLoading(false))
+  }, [])
+
+  const register = useCallback(async (params: RegisterParams) => {
+    const data = await apiFetch<{ user: AuthUser; token: string }>('/api/register', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+
+    window.localStorage.setItem(STORAGE_KEY, data.token)
+    setToken(data.token)
+    setUser(data.user)
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
@@ -95,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, forgotPassword, resetPassword }}>
+    <AuthContext.Provider value={{ user, isLoading, register, login, logout, forgotPassword, resetPassword }}>
       {children}
     </AuthContext.Provider>
   )
