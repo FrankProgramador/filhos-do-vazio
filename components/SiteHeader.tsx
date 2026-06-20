@@ -33,10 +33,6 @@ const navGroups = [
   },
 ]
 
-const navLinks = [
-  { href: '/criar-personagem', label: 'Criação de Personagem' },
-]
-
 function NavDropdown({ label, items, activePath }: { label: string; items: Array<{ href: string; label: string }>; activePath?: string }) {
   const [open, setOpen] = useState(false)
   const isActive = items.some(i => i.href === activePath)
@@ -69,7 +65,7 @@ function NavDropdown({ label, items, activePath }: { label: string; items: Array
             padding: '0.4rem',
             backdropFilter: 'blur(14px)',
             boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-            zIndex: 60,
+            zIndex: 1001,
           }}
         >
           {items.map(item => (
@@ -103,9 +99,10 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
   return (
     <>
       <header
-        className="fixed top-0 left-0 right-0 z-50"
+        className="fixed top-0 left-0 right-0"
         style={{
           height: 44,
+          zIndex: 1000,
           background: 'rgba(var(--bg-rgb),0.55)',
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
@@ -129,29 +126,34 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
             </span>
           </Link>
 
-          <nav className="hidden sm:flex items-center gap-0.5 flex-1 overflow-x-auto" aria-label="Menu principal">
+          <nav className="hidden sm:flex items-center gap-0.5 flex-1" aria-label="Menu principal">
             {navGroups.map(group => (
               <NavDropdown key={group.label} label={group.label} items={group.items} activePath={activePath} />
             ))}
-            {navLinks.map(({ href, label }) => (
-              <Link
-                key={label}
-                href={href}
-                className="ddb-nav-link"
-                style={activePath === href ? { color: 'var(--gold)' } : undefined}
-              >
-                {label}
-              </Link>
-            ))}
             {!isLoading && (
-              user ? (
-                <>
-                  <Link href="/painel" className="ddb-nav-link ml-2 shrink-0">
-                    Painel
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="ddb-nav-link shrink-0 border-0 bg-transparent cursor-pointer"
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {user ? (
+                  <>
+                    <Link href="/painel" className="ddb-nav-link shrink-0">
+                      Painel
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="ddb-nav-link shrink-0 border-0 bg-transparent cursor-pointer"
+                      style={{
+                        color: 'var(--gold)',
+                        border: '1px solid rgba(var(--gold-rgb),0.35)',
+                        background: 'rgba(var(--gold-rgb),0.06)',
+                        borderRadius: 4,
+                      }}
+                    >
+                      Sair ({user.name})
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/entrar"
+                    className="ddb-nav-link shrink-0"
                     style={{
                       color: 'var(--gold)',
                       border: '1px solid rgba(var(--gold-rgb),0.35)',
@@ -159,23 +161,10 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
                       borderRadius: 4,
                     }}
                   >
-                    Sair ({user.name})
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/entrar"
-                  className="ddb-nav-link ml-2 shrink-0"
-                  style={{
-                    color: 'var(--gold)',
-                    border: '1px solid rgba(var(--gold-rgb),0.35)',
-                    background: 'rgba(var(--gold-rgb),0.06)',
-                    borderRadius: 4,
-                  }}
-                >
-                  Entrar
-                </Link>
-              )
+                    Entrar
+                  </Link>
+                )}
+              </div>
             )}
           </nav>
 
@@ -211,11 +200,12 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
 
       {open && (
         <nav
-          className="fixed z-40 flex flex-col gap-1 px-6 py-4 sm:hidden"
+          className="fixed flex flex-col gap-1 px-6 py-4 sm:hidden"
           style={{
             top: 44,
             left: 0,
             right: 0,
+            zIndex: 999,
             background: 'rgba(var(--bg-rgb),0.98)',
             borderBottom: '1px solid rgba(var(--gold-rgb),0.1)',
             backdropFilter: 'blur(14px)',
@@ -239,16 +229,6 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
                 </Link>
               ))}
             </div>
-          ))}
-          {navLinks.map(({ href, label }) => (
-            <Link
-              key={label}
-              href={href}
-              className="ddb-nav-link py-3 rounded"
-              onClick={() => setOpen(false)}
-            >
-              {label}
-            </Link>
           ))}
           {!isLoading && (
             user ? (
