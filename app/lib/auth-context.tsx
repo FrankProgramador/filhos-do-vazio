@@ -9,6 +9,7 @@ export type AuthUser = {
   id: number
   name: string
   email: string
+  is_admin: boolean
 }
 
 type ForgotPasswordResponse = {
@@ -32,6 +33,7 @@ type RegisterParams = {
 
 type AuthContextValue = {
   user: AuthUser | null
+  token: string | null
   isLoading: boolean
   register: (params: RegisterParams) => Promise<void>
   login: (email: string, password: string) => Promise<void>
@@ -114,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, register, login, logout, forgotPassword, resetPassword }}>
+    <AuthContext.Provider value={{ user, token, isLoading, register, login, logout, forgotPassword, resetPassword }}>
       {children}
     </AuthContext.Provider>
   )

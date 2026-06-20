@@ -1,5 +1,12 @@
-import type { Base, TracoAtributo, Atributos } from '@/app/lib/mockData'
-import { MAX_TRACOS } from '@/app/lib/mockData'
+import type { Atributos, GameTrait, Size } from '@/app/lib/gameData'
+import { MAX_TRACOS } from '@/app/lib/gameData'
+
+// Traços de atributo (point-buy) são identificados por slug — mecânica preservada
+// como estava antes da unificação do model de Traço por raridade.
+const ATTR_TRAIT_SLUGS = [
+  'poderoso', 'gracioso', 'duradouro', 'perspicaz', 'fragil', 'fraco',
+  'lindo', 'assustador-traco', 'lento', 'agil', 'saudavel', 'enfermo',
+]
 
 const PRIMARY_ATTRS: Array<[keyof Atributos, string]> = [
   ['poder', 'Poder'],
@@ -9,78 +16,55 @@ const PRIMARY_ATTRS: Array<[keyof Atributos, string]> = [
 ]
 
 const SECONDARY_ATTRS: Array<[keyof Atributos, string]> = [
-  ['coracao',    'Coração'],
-  ['estamina',   'Estamina'],
-  ['alma',       'Alma'],
+  ['coracao', 'Coração'],
+  ['estamina', 'Estamina'],
+  ['alma', 'Alma'],
   ['velocidade', 'Velocidade'],
 ]
 
 const SOCIAL_ATTRS: Array<[keyof Atributos, string, string]> = [
-  ['fofo',        'Fofo',        '🌸'],
-  ['assustador',  'Assustador',  '💀'],
+  ['fofo', 'Fofo', '🌸'],
+  ['assustador', 'Assustador', '💀'],
 ]
 
 interface Props {
-  base: Base
-  tracosAtributo: TracoAtributo[]
-  attrTraits: Record<string, number>
+  size: Size
+  traits: GameTrait[]
+  attrTraits: Record<number, number>
   atributos: Atributos
-  fomeGasta: number
-  fomeMax: number
   totalTracos: number
-  onAdd: (id: string) => void
-  onRemove: (id: string) => void
+  onAdd: (id: number) => void
+  onRemove: (id: number) => void
 }
 
 function fmtAttr(v: number) {
   return Number.isInteger(v) ? v.toString() : v.toFixed(1)
 }
 
-function FomeBar({ fomeGasta, fomeMax }: { fomeGasta: number; fomeMax: number }) {
-  const pct = Math.max(0, Math.min(100, (fomeGasta / fomeMax) * 100))
-  const color = pct >= 90 ? 'var(--error)' : pct >= 70 ? 'var(--warning)' : 'var(--gold)'
-  return (
-    <div className="flex flex-col gap-1.5 flex-1">
-      <div className="flex items-center justify-between">
-        <span style={{
-          fontFamily: 'var(--font-cinzel)',
-          fontSize: '0.6rem',
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
-          color: 'var(--text-muted)',
-        }}>
-          Fome
-        </span>
-        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.75rem', fontWeight: 700, color }}>
-          {fomeGasta} / {fomeMax}
-        </span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(var(--gold-rgb),0.1)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${pct}%`,
-          background: color,
-          borderRadius: 3,
-          transition: 'width 0.3s ease, background 0.3s ease',
-        }} />
-      </div>
-    </div>
-  )
-}
-
-export default function Step2Attributes({
-  base, tracosAtributo, attrTraits, atributos, fomeGasta, fomeMax, totalTracos, onAdd, onRemove,
+export default function Step4Attributes({
+  size, traits, attrTraits, atributos, totalTracos, onAdd, onRemove,
 }: Props) {
+  const attrTraitList = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug))
+
   return (
     <div className="flex flex-col gap-8">
       {/* Status bar */}
-      <div className="flex items-center gap-4" style={{
+      <div className="flex items-center justify-between" style={{
         padding: '1rem 1.25rem',
         background: 'var(--card)',
         border: '1px solid rgba(var(--gold-rgb),0.1)',
         borderRadius: 8,
       }}>
-        <FomeBar fomeGasta={fomeGasta} fomeMax={fomeMax} />
+        <p style={{
+          fontFamily: 'var(--font-im-fell)',
+          fontStyle: 'italic',
+          fontSize: '0.8rem',
+          color: 'rgba(var(--text-rgb),0.5)',
+          margin: 0,
+        }}>
+          Traços de atributo são livres — o custo de cada um já está embutido no próprio
+          atributo que ele altera (ex: Fraco já dá -1 Poder).
+        </p>
         <div style={{
           flexShrink: 0,
           textAlign: 'center',
@@ -120,10 +104,9 @@ export default function Step2Attributes({
             textTransform: 'uppercase',
             color: 'var(--gold)',
           }}>
-            Atributos — {base.nome}
+            Atributos — {size.name}
           </h3>
 
-          {/* Primários */}
           <div>
             <p style={{
               fontFamily: 'var(--font-cinzel)',
@@ -151,7 +134,7 @@ export default function Step2Attributes({
                     color: 'var(--text)',
                     lineHeight: 1,
                   }}>
-                    {fmtAttr(atributos[key] as number)}
+                    {fmtAttr(atributos[key])}
                   </div>
                   <div style={{
                     fontFamily: 'var(--font-cinzel)',
@@ -168,7 +151,6 @@ export default function Step2Attributes({
             </div>
           </div>
 
-          {/* Sociais — atualizados por traços */}
           <div>
             <p style={{
               fontFamily: 'var(--font-cinzel)',
@@ -196,7 +178,7 @@ export default function Step2Attributes({
                     color: 'var(--text)',
                     lineHeight: 1,
                   }}>
-                    {fmtAttr(atributos[key] as number)}
+                    {fmtAttr(atributos[key])}
                   </div>
                   <div style={{
                     fontFamily: 'var(--font-cinzel)',
@@ -223,7 +205,6 @@ export default function Step2Attributes({
             </p>
           </div>
 
-          {/* Secundários */}
           <div>
             <p style={{
               fontFamily: 'var(--font-cinzel)',
@@ -258,7 +239,7 @@ export default function Step2Attributes({
                     fontWeight: 600,
                     color: 'rgba(var(--text-rgb),0.6)',
                   }}>
-                    {atributos[key]}
+                    {fmtAttr(atributos[key])}
                   </span>
                 </div>
               ))}
@@ -278,18 +259,17 @@ export default function Step2Attributes({
             Traços de Atributo
           </h3>
 
-          {tracosAtributo.map(traco => {
-            const count = attrTraits[traco.id] ?? 0
-            const isNegative = traco.custoFome < 0
-            const canAdd =
-              count < traco.maxVezes &&
-              totalTracos < MAX_TRACOS &&
-              (isNegative || fomeGasta + traco.custoFome <= fomeMax)
+          {attrTraitList.map(trait => {
+            const count = attrTraits[trait.id] ?? 0
+            const canAdd = count < trait.max_selections && totalTracos < MAX_TRACOS
             const canRemove = count > 0
+            const disabledReason = !canAdd && !canRemove
+              ? (count >= trait.max_selections ? `Limite de ${trait.max_selections}x atingido` : 'Limite de traços atingido')
+              : null
 
             return (
               <div
-                key={traco.id}
+                key={trait.id}
                 className={`card ${count > 0 ? 'card--selected' : ''}`}
                 style={{
                   padding: '0.875rem 1rem',
@@ -299,11 +279,10 @@ export default function Step2Attributes({
                 }}
               >
                 <div className="flex items-start justify-between gap-3">
-                  {/* Thumbnail */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
-                    alt={`${traco.nome} — thumbnail disponível em breve`}
+                    alt={`${trait.name} — thumbnail disponível em breve`}
                     style={{
                       width: 44,
                       height: 44,
@@ -322,14 +301,11 @@ export default function Step2Attributes({
                         fontWeight: 600,
                         color: count > 0 ? 'var(--gold-light)' : 'var(--text)',
                       }}>
-                        {traco.nome}
+                        {trait.name}
                       </span>
-                      <span className={`badge ${isNegative ? 'badge--success' : 'badge--gold'}`} style={{ fontSize: '0.5rem' }}>
-                        {isNegative ? '' : '+'}{traco.custoFome} Fome
-                      </span>
-                      {traco.maxVezes > 1 && (
+                      {trait.max_selections > 1 && (
                         <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.48rem' }}>
-                          máx {traco.maxVezes}×
+                          máx {trait.max_selections}×
                         </span>
                       )}
                     </div>
@@ -340,14 +316,23 @@ export default function Step2Attributes({
                       color: 'rgba(var(--text-rgb),0.42)',
                       marginTop: '0.25rem',
                     }}>
-                      {traco.efeito}
+                      {trait.mechanical_effect}
                     </p>
+                    {disabledReason && (
+                      <p style={{
+                        fontFamily: 'var(--font-cinzel)',
+                        fontSize: '0.55rem',
+                        color: 'var(--text-muted)',
+                        marginTop: '0.3rem',
+                      }} title={disabledReason}>
+                        {disabledReason}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Counter */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => onRemove(traco.id)}
+                      onClick={() => onRemove(trait.id)}
                       disabled={!canRemove}
                       className="counter-btn counter-btn--dec"
                       style={{
@@ -374,7 +359,7 @@ export default function Step2Attributes({
                       {count}
                     </span>
                     <button
-                      onClick={() => onAdd(traco.id)}
+                      onClick={() => onAdd(trait.id)}
                       disabled={!canAdd}
                       className="counter-btn counter-btn--inc"
                       style={{
@@ -403,7 +388,7 @@ export default function Step2Attributes({
             color: 'rgba(var(--text-rgb),0.3)',
             marginTop: '0.25rem',
           }}>
-            Traços negativos (Frágil, Fraco) devolvem Fome — combináveis com traços positivos.
+            Traços negativos (Frágil, Fraco) reduzem um atributo, mas podem ser combinados com traços positivos.
           </p>
         </div>
       </div>

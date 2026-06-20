@@ -14,13 +14,82 @@ const SoulLogo = () => (
   </svg>
 )
 
+const navGroups = [
+  {
+    label: 'Mundo',
+    items: [
+      { href: '/historia', label: 'História' },
+      { href: '/locais', label: 'Locais' },
+      { href: '/faccoes', label: 'Facções' },
+    ],
+  },
+  {
+    label: 'Como Jogar',
+    items: [
+      { href: '/como-jogar', label: 'Regras' },
+      { href: '/como-jogar/tracos', label: 'Traços' },
+      { href: '/como-jogar/itens', label: 'Itens' },
+    ],
+  },
+]
+
 const navLinks = [
-  { href: '/locais',       label: 'Mundo' },
-  { href: '/como-jogar',   label: 'Como Jogar' },
   { href: '/criar-personagem', label: 'Criação de Personagem' },
   { href: '/#legado',      label: 'Minhas Fichas' },
   { href: '/#partidas',    label: 'Campanhas' },
 ]
+
+function NavDropdown({ label, items, activePath }: { label: string; items: Array<{ href: string; label: string }>; activePath?: string }) {
+  const [open, setOpen] = useState(false)
+  const isActive = items.some(i => i.href === activePath)
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="ddb-nav-link"
+        style={isActive ? { color: 'var(--gold)' } : undefined}
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+      >
+        {label} <span style={{ fontSize: '0.6em', opacity: 0.7 }}>▾</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0"
+          style={{
+            top: '100%',
+            minWidth: 160,
+            background: 'rgba(var(--bg-rgb),0.98)',
+            border: '1px solid rgba(var(--gold-rgb),0.15)',
+            borderRadius: 8,
+            padding: '0.4rem',
+            backdropFilter: 'blur(14px)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            zIndex: 60,
+          }}
+        >
+          {items.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="ddb-nav-link"
+              style={{ display: 'block', padding: '0.5rem 0.75rem', ...(activePath === item.href ? { color: 'var(--gold)' } : {}) }}
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function SiteHeader({ activePath }: { activePath?: string }) {
   const [open, setOpen] = useState(false)
@@ -63,6 +132,9 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
           </Link>
 
           <nav className="hidden sm:flex items-center gap-0.5 flex-1 overflow-x-auto" aria-label="Menu principal">
+            {navGroups.map(group => (
+              <NavDropdown key={group.label} label={group.label} items={group.items} activePath={activePath} />
+            ))}
             {navLinks.map(({ href, label }) => (
               <Link
                 key={label}
@@ -152,6 +224,24 @@ export default function SiteHeader({ activePath }: { activePath?: string }) {
           }}
           aria-label="Menu mobile"
         >
+          {navGroups.map(group => (
+            <div key={group.label} className="flex flex-col">
+              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.5rem 0.75rem 0.1rem' }}>
+                {group.label}
+              </span>
+              {group.items.map(item => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="ddb-nav-link py-2 rounded"
+                  style={{ paddingLeft: '0.75rem' }}
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ))}
           {navLinks.map(({ href, label }) => (
             <Link
               key={label}

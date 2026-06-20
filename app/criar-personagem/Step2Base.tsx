@@ -1,24 +1,24 @@
-import type { Base } from '@/app/lib/mockData'
+import type { Size } from '@/app/lib/gameData'
 
-const ATTR_LABELS: Array<[keyof Base['atributos'], string]> = [
-  ['poder',      'Poder'],
-  ['saber',      'Saber'],
-  ['casca',      'Casca'],
-  ['graca',      'Graça'],
-  ['coracao',    'Coração'],
-  ['estamina',   'Estamina'],
-  ['alma',       'Alma'],
+const ATTR_LABELS: Array<[keyof Size, string]> = [
+  ['poder', 'Poder'],
+  ['saber', 'Saber'],
+  ['casca', 'Casca'],
+  ['graca', 'Graça'],
+  ['coracao', 'Coração'],
+  ['estamina', 'Estamina'],
+  ['alma', 'Alma'],
   ['velocidade', 'Velocidade'],
-  ['fomeMaxima', 'Fome Máx.'],
+  ['sustento_maximo', 'Sustento Máx.'],
 ]
 
 interface Props {
-  bases: Base[]
-  selectedId: string | null
-  onSelect: (id: string) => void
+  sizes: Size[]
+  selectedId: number | null
+  onSelect: (id: number) => void
 }
 
-export default function Step1Base({ bases, selectedId, onSelect }: Props) {
+export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
   return (
     <div>
       <p style={{
@@ -29,17 +29,17 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
         lineHeight: 1.8,
         maxWidth: 600,
       }}>
-        A base define o tamanho e as capacidades naturais do seu inseto. Ela estabelece os
-        atributos iniciais e o orçamento de Fome disponível para personalização.
+        O tamanho define as capacidades naturais do seu inseto. Ele estabelece os
+        atributos iniciais e o orçamento de Sustento disponível para personalização.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {bases.map(base => {
-          const isSelected = selectedId === base.id
+        {sizes.map(size => {
+          const isSelected = selectedId === size.id
           return (
             <button
-              key={base.id}
-              onClick={() => onSelect(base.id)}
+              key={size.id}
+              onClick={() => onSelect(size.id)}
               className={`card text-left overflow-hidden transition-all duration-200 ${isSelected ? 'card--selected' : ''}`}
               style={{
                 background: 'var(--card)',
@@ -59,8 +59,8 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
               <div style={{ position: 'relative', aspectRatio: '1/1', overflow: 'hidden' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={base.thumbPlaceholder}
-                  alt={`Ilustração da base ${base.nome}`}
+                  src={`/img/bases/${size.image ?? size.slug}.jpg`}
+                  alt={`Ilustração do tamanho ${size.name}`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
                 />
                 <div style={{
@@ -78,7 +78,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                   color: isSelected ? 'var(--gold)' : 'var(--text)',
                   marginBottom: '0.4rem',
                 }}>
-                  {base.nome}
+                  {size.name}
                 </h2>
                 <p style={{
                   fontFamily: 'var(--font-im-fell)',
@@ -88,7 +88,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                   marginBottom: '1rem',
                   lineHeight: 1.6,
                 }}>
-                  {base.descricao}
+                  {size.description}
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
@@ -118,7 +118,7 @@ export default function Step1Base({ bases, selectedId, onSelect }: Props) {
                         fontWeight: 600,
                         color: isSelected ? 'var(--gold)' : 'var(--text)',
                       }}>
-                        {base.atributos[key]}
+                        {String(size[key])}
                       </span>
                     </div>
                   ))}
