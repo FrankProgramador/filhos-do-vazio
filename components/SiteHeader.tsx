@@ -35,8 +35,6 @@ const navGroups = [
 
 const navLinks = [
   { href: '/criar-personagem', label: 'Criação de Personagem' },
-  { href: '/#legado',      label: 'Minhas Fichas' },
-  { href: '/#partidas',    label: 'Campanhas' },
 ]
 
 function NavDropdown({ label, items, activePath }: { label: string; items: Array<{ href: string; label: string }>; activePath?: string }) {

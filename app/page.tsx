@@ -3,9 +3,7 @@ import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
 import HeroSection from '@/components/landing/HeroSection'
 import ReinoSection from '@/components/landing/ReinoSection'
-import LegadoSection from '@/components/landing/LegadoSection'
 import SistemaSection from '@/components/landing/SistemaSection'
-import PartidasSection from '@/components/landing/PartidasSection'
 
 export const metadata: Metadata = {
   title: 'Filhos do Vazio – Aventuras em um reino decadente de insetos',
@@ -19,9 +17,7 @@ export default function Home() {
       <main>
         <HeroSection />
         <ReinoSection />
-        <LegadoSection />
         <SistemaSection />
-        <PartidasSection />
       </main>
       <SiteFooter />
     </div>

@@ -89,7 +89,7 @@ export default function HeroSection() {
 
       {/* ── CTAs ── */}
       <div className="flex flex-wrap justify-center gap-4 px-6 pt-5 pb-10">
-        <Link href="#legado" className="btn-hero">✦ Criar Herói</Link>
+        <Link href="/criar-personagem" className="btn-hero">✦ Criar Herói</Link>
         <Link
           href="#reino"
           className="hk-btn hk-btn-soul"

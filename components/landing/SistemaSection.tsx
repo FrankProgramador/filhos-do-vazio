@@ -1,18 +1,26 @@
+import Link from 'next/link'
+
 const rules = [
   {
-    icon: '🎲',
-    title: '📜 Como Jogar',
-    text: 'Testes baseados em dados de seis faces. Sucessos em 5 ou 6. Rerrolagens com atributos ×1.5. Simples e rápido — foco na narrativa, não nas regras.',
+    icon: '📖',
+    title: 'Regras',
+    text: 'Testes baseados em dados de seis faces. Sucessos em 5 ou 6. O Toque de Vaskrin, combate, alma e Fragmentos do Vazio — tudo em um só guia.',
+    href: '/como-jogar',
+    cta: 'Ler as Regras →',
   },
   {
-    icon: '⚔️',
-    title: '⚔️ Combate',
-    text: 'Ações custam Estamina. Ataques, esquivas, aparações e movimentação tática em grid. Gerencie sua Estamina a cada rodada para sobreviver.',
+    icon: '🦋',
+    title: 'Traços',
+    text: 'Comuns, marcantes, raros e de personalidade. Consulte o compêndio completo de traços com seus efeitos mecânicos e raridades.',
+    href: '/como-jogar/tracos',
+    cta: 'Ver Traços →',
   },
   {
-    icon: '✨',
-    title: '✨ Magia',
-    text: 'Use Alma para conjurar feitiços. Essência desbloqueia poderes de Sonho e Pesadelo. Foque para curar ou potencializar seus ataques.',
+    icon: '🎒',
+    title: 'Itens',
+    text: 'Armas, armaduras, ferramentas e consumíveis disponíveis para a criação de personagem. Busque e filtre por tipo.',
+    href: '/como-jogar/itens',
+    cta: 'Ver Itens →',
   },
 ]
 
@@ -26,22 +34,27 @@ export default function SistemaSection() {
           className="text-center mb-4 section-heading-glow"
           style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--text)' }}
         >
-          📖 Sistema de Regras
+          📖 Como Jogar
         </h2>
         <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
           Elegante, rápido e baseado em dados de seis faces. Aprenda em minutos, domine em sessões.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rules.map(({ icon, title, text }) => (
-            <div key={title} className="rules-card">
+          {rules.map(({ icon, title, text, href, cta }) => (
+            <div key={title} className="rules-card flex flex-col">
               <span style={{ fontSize: '2.2rem', marginBottom: '1rem', display: 'block' }} aria-hidden>{icon}</span>
               <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', fontWeight: 600, color: 'var(--gold)', marginBottom: '.75rem', letterSpacing: '.05em' }}>
                 {title}
               </h3>
-              <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.88rem', lineHeight: 1.8, fontFamily: 'var(--font-im-fell)' }}>
+              <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.88rem', lineHeight: 1.8, fontFamily: 'var(--font-im-fell)', flex: 1 }}>
                 {text}
               </p>
+              <div className="mt-5">
+                <Link href={href} className="hk-btn hk-btn-soul" style={{ fontSize: '.72rem', padding: '.65rem 1.4rem', borderRadius: 6 }}>
+                  {cta}
+                </Link>
+              </div>
             </div>
           ))}
         </div>
