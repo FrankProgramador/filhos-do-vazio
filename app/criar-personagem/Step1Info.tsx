@@ -1,6 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { useAuth } from '@/app/lib/auth-context'
+import { apiUpload, ApiError } from '@/app/lib/api'
 
 interface Props {
   nome: string
@@ -50,13 +52,27 @@ export default function Step1Info({
   onNomeChange, onIdadeChange, onEspecieChange, onAvatarChange,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { token } = useAuth()
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => onAvatarChange(reader.result as string)
-    reader.readAsDataURL(file)
+
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      const result = await apiUpload<{ url: string }>('/api/uploads/avatar', formData, token)
+      onAvatarChange(result.url)
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : 'Não foi possível enviar a imagem.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   return (
@@ -178,10 +194,11 @@ export default function Step1Info({
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
                 className="hk-btn hk-btn-soul"
-                style={{ fontSize: '0.68rem', padding: '0.5rem 1.1rem', borderRadius: 6 }}
+                style={{ fontSize: '0.68rem', padding: '0.5rem 1.1rem', borderRadius: 6, opacity: uploading ? 0.6 : 1, cursor: uploading ? 'not-allowed' : 'pointer' }}
               >
-                Enviar imagem
+                {uploading ? 'Enviando...' : 'Enviar imagem'}
               </button>
               {avatar && (
                 <button
@@ -191,6 +208,11 @@ export default function Step1Info({
                 >
                   Remover
                 </button>
+              )}
+              {uploadError && (
+                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', color: 'var(--error)', marginTop: '0.5rem' }}>
+                  {uploadError}
+                </p>
               )}
             </div>
           </div>

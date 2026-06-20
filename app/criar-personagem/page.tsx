@@ -169,6 +169,7 @@ export default function CriarPersonagem() {
       setSheet(s => ({ ...s, subTraits: s.subTraits.filter(st => st !== subId) }))
       return
     }
+    if (totalTracos >= MAX_TRACOS) return
     setSheet(s => ({ ...s, subTraits: [...s.subTraits, subId] }))
   }
 

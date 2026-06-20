@@ -63,7 +63,7 @@ export default function Step5Special({
   const [rarityFilter, setRarityFilter] = useState<TraitRarity | 'all'>('all')
 
   const countByRarity = (rarity: TraitRarity) =>
-    specialTraits.filter(id => pool.find(t => t.id === id)?.rarity === rarity).length
+    [...specialTraits, ...subTraits].filter(id => traits.find(t => t.id === id)?.rarity === rarity).length
 
   const visible = pool.filter(t => t.category === activeCategory && (rarityFilter === 'all' || t.rarity === rarityFilter))
 
@@ -79,7 +79,7 @@ export default function Step5Special({
         }}>
           Traços especiais representam características físicas únicas do seu inseto.
           São escolhidos livremente, dentro dos limites por raridade. Sub-traços
-          desbloqueados por traços selecionados não contam para o limite de {MAX_TRACOS} traços.
+          desbloqueados por traços selecionados contam para o limite da sua própria raridade.
         </p>
         <div className="flex gap-2 flex-wrap">
           {(['common', 'remarkable', 'rare'] as const).map(rarity => {
@@ -239,17 +239,29 @@ export default function Step5Special({
                   <div className="flex flex-col gap-2">
                     {children.map(sub => {
                       const isSubSelected = subTraits.includes(sub.id)
+                      const subCap = RARITY_CAPS[sub.rarity as 'common' | 'remarkable' | 'rare']
+                      const subRarityCount = countByRarity(sub.rarity)
+                      const subWouldExceedTracos = !isSubSelected && totalTracos >= MAX_TRACOS
+                      const subWouldExceedRarityCap = !isSubSelected && subRarityCount >= subCap
+                      const canToggleSub = isSubSelected || (!subWouldExceedTracos && !subWouldExceedRarityCap)
+                      const subBlockReason = !canToggleSub
+                        ? (subWouldExceedRarityCap ? `Limite de traços ${RARITY_LABELS[sub.rarity].toLowerCase()}s atingido` : 'Limite de traços comuns atingido')
+                        : null
+
                       return (
                         <button
                           key={sub.id}
                           onClick={e => { e.stopPropagation(); onToggleSub(trait.id, sub.id) }}
+                          disabled={!canToggleSub}
                           className="text-left w-full"
+                          title={subBlockReason ?? undefined}
                           style={{
                             padding: '0.6rem 0.75rem',
                             background: isSubSelected ? 'rgba(var(--gold-rgb),0.09)' : 'rgba(var(--gold-rgb),0.02)',
                             border: isSubSelected ? '1px solid rgba(var(--gold-rgb),0.22)' : '1px solid rgba(var(--gold-rgb),0.08)',
                             borderRadius: 5,
-                            cursor: 'pointer',
+                            cursor: canToggleSub ? 'pointer' : 'not-allowed',
+                            opacity: !canToggleSub ? 0.38 : 1,
                             transition: 'all 0.15s',
                           }}
                         >

@@ -225,17 +225,16 @@ export function sustentoNecessario(size: Size): number {
 }
 
 /**
- * Conta traços para o limite de criação: só traços sem pré-requisito (não são
- * sub-traços) contam, e traços multi-pick contam 1x por vez escolhida.
+ * Conta traços para o limite de criação: sub-traços contam como o traço comum/
+ * marcante/raro que são (pela própria raridade), e traços multi-pick contam
+ * 1x por vez escolhida.
  */
 export function countCappedTraits(selected: SelectedTrait[]): number {
-  return selected
-    .filter(({ trait }) => trait.prerequisite_trait_id === null)
-    .reduce((total, { quantity }) => total + quantity, 0)
+  return selected.reduce((total, { quantity }) => total + quantity, 0)
 }
 
 export function countCappedByRarity(selected: SelectedTrait[], rarity: TraitRarity): number {
   return selected
-    .filter(({ trait }) => trait.prerequisite_trait_id === null && trait.rarity === rarity)
+    .filter(({ trait }) => trait.rarity === rarity)
     .reduce((total, { quantity }) => total + quantity, 0)
 }

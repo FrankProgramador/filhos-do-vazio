@@ -38,3 +38,30 @@ export async function apiFetch<T>(
 
   return data as T
 }
+
+/**
+ * Para uploads de arquivo (FormData) — não define Content-Type manualmente,
+ * deixando o navegador montar o boundary multipart correto.
+ */
+export async function apiUpload<T>(path: string, formData: FormData, token?: string | null): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    throw new ApiError(
+      data?.message ?? 'Não foi possível enviar o arquivo. Tente novamente.',
+      res.status,
+      data?.errors
+    )
+  }
+
+  return data as T
+}
