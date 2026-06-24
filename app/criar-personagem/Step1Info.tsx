@@ -77,22 +77,22 @@ export default function Step1Info({
 
   return (
     <div className="flex flex-col gap-8">
-      <p style={{
-        fontFamily: 'var(--font-im-fell)',
-        fontStyle: 'italic',
-        color: 'rgba(var(--text-rgb),0.55)',
-        lineHeight: 1.8,
-        maxWidth: 600,
-      }}>
-        Antes de definir corpo e habilidades, dê identidade ao seu inseto. O nome é
-        obrigatório — os demais campos podem ser preenchidos ou ajustados depois.
-      </p>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
+        <div className="md:col-span-2">
           <label style={labelStyle}>
             Nome <span style={{ color: 'var(--error)' }}>*</span>
           </label>
+          <p style={{
+            fontFamily: 'var(--font-im-fell)',
+            fontStyle: 'italic',
+            fontSize: '0.82rem',
+            color: 'rgba(var(--text-rgb),0.5)',
+            lineHeight: 1.7,
+            marginBottom: '0.6rem',
+          }}>
+            Dê um nome ao seu inseto. Pode ser o nome que escolheu, o que alguém lhe deu,
+            ou uma palavra que ficou grudada por razões que já esqueceu.
+          </p>
           <input
             type="text"
             value={nome}
@@ -103,29 +103,52 @@ export default function Step1Info({
           />
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <label style={labelStyle}>
-            Idade <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
+            Espécie <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
           </label>
+          <p style={{
+            fontFamily: 'var(--font-im-fell)',
+            fontStyle: 'italic',
+            fontSize: '0.82rem',
+            color: 'rgba(var(--text-rgb),0.5)',
+            lineHeight: 1.7,
+            marginBottom: '0.6rem',
+          }}>
+            Defina a espécie: besouro, mariposa, formiga, louva-a-deus, grilo, percevejo,
+            centopeia, mosca, vespa, borboleta... enfim, qualquer coisa que rasteje, voe ou
+            escave. A espécie não tem efeito mecânico, mas vai influenciar como o mundo
+            reage a você.
+          </p>
           <input
-            type="number"
-            min={0}
-            value={idade}
-            onChange={e => onIdadeChange(e.target.value)}
-            placeholder="Em estações de vida"
+            type="text"
+            value={especie}
+            onChange={e => onEspecieChange(e.target.value)}
+            placeholder="Formiga, Besouro, Mariposa..."
             style={inputStyle}
           />
         </div>
 
         <div className="md:col-span-2">
           <label style={labelStyle}>
-            Espécie <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
+            Idade <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
           </label>
+          <p style={{
+            fontFamily: 'var(--font-im-fell)',
+            fontStyle: 'italic',
+            fontSize: '0.82rem',
+            color: 'rgba(var(--text-rgb),0.5)',
+            lineHeight: 1.7,
+            marginBottom: '0.6rem',
+          }}>
+            A idade também não tem efeito mecânico, mas tem um grande peso interpretativo.
+          </p>
           <input
-            type="text"
-            value={especie}
-            onChange={e => onEspecieChange(e.target.value)}
-            placeholder="Formiga, Besouro, Mariposa..."
+            type="number"
+            min={0}
+            value={idade}
+            onChange={e => onIdadeChange(e.target.value)}
+            placeholder="Em estações de vida"
             style={inputStyle}
           />
         </div>

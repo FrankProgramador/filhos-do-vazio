@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth-context'
 import {
   IconChevronLeft,
+  IconGrid,
   IconHome,
   IconMap,
+  IconPlay,
   IconQuestion,
   IconScroll,
   IconShield,
@@ -23,6 +25,8 @@ const navItems: NavItem[] = [
   { href: '/painel', label: 'Início', icon: IconHome },
   { href: '/criar-personagem', label: 'Criar Personagem', icon: IconScroll },
   { href: '/painel/personagens', label: 'Meus Personagens', icon: IconShield },
+  { href: '/painel/mapas', label: 'Mapas', icon: IconGrid },
+  { href: '/painel/jogo', label: 'Jogo (teste)', icon: IconPlay },
   {
     href: '/locais',
     label: 'Mundo',

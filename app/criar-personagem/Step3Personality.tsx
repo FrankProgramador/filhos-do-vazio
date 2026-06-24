@@ -61,6 +61,9 @@ export default function Step3Personality({ traits, personalityTraits, onToggle }
               <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.6, marginBottom: '0.4rem' }}>
                 {trait.description}
               </p>
+              <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '0.25rem' }}>
+                <strong style={{ color: 'rgba(var(--gold-rgb),0.8)' }}>Mecânica:</strong> {trait.mechanical_effect}
+              </p>
               <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 <strong style={{ color: 'rgba(var(--gold-rgb),0.8)' }}>Obrigação:</strong> {trait.roleplay_obligation}
               </p>

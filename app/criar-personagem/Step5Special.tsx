@@ -6,8 +6,14 @@ import { MAX_RARE, MAX_REMARKABLE, MAX_TRACOS } from '@/app/lib/gameData'
 
 // Traços de atributo (point-buy) já são escolhidos no passo anterior — não aparecem aqui.
 const ATTR_TRAIT_SLUGS = [
-  'poderoso', 'gracioso', 'duradouro', 'perspicaz', 'fragil', 'fraco',
-  'lindo', 'assustador-traco', 'lento', 'agil', 'saudavel', 'enfermo',
+  'poderoso', 'bruto', 'encouracado',
+  'gracioso', 'fragil', 'escorregadio', 'refinado',
+  'duradouro', 'lento', 'obtuso',
+  'perspicaz', 'estudioso', 'ansioso',
+  'lindo', 'fraco', 'ingenuo', 'medroso',
+  'ameacador', 'intimidante', 'cicatrizado',
+  'agil', 'leviano', 'nervoso',
+  'saudavel',
 ]
 
 const CATEGORY_LABELS: Record<TraitCategory, string> = {

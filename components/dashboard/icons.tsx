@@ -70,6 +70,23 @@ export function IconQuestion({ className }: IconProps) {
   )
 }
 
+export function IconPlay({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 4.5v15l13-7.5Z" />
+    </svg>
+  )
+}
+
+export function IconGrid({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="4" y="4" width="16" height="16" rx="1" />
+      <path d="M4 9.5h16M4 14.5h16M9.5 4v16M14.5 4v16" />
+    </svg>
+  )
+}
+
 export function IconChevronLeft({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

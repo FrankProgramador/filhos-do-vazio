@@ -1,11 +1,20 @@
+'use client'
+
+import { useState } from 'react'
 import type { Atributos, GameTrait, Size } from '@/app/lib/gameData'
 import { MAX_TRACOS } from '@/app/lib/gameData'
 
-// Traços de atributo (point-buy) são identificados por slug — mecânica preservada
-// como estava antes da unificação do model de Traço por raridade.
-const ATTR_TRAIT_SLUGS = [
-  'poderoso', 'gracioso', 'duradouro', 'perspicaz', 'fragil', 'fraco',
-  'lindo', 'assustador-traco', 'lento', 'agil', 'saudavel', 'enfermo',
+// Traços de atributo (point-buy) agrupados pelo atributo que afetam — cada grupo
+// vira uma aba no painel da direita, igual ao agrupamento por categoria do passo 5.
+const ATTR_GROUPS: Array<{ key: keyof Atributos; label: string; slugs: string[] }> = [
+  { key: 'poder', label: 'Poder', slugs: ['poderoso', 'bruto', 'encouracado'] },
+  { key: 'graca', label: 'Graça', slugs: ['gracioso', 'fragil', 'escorregadio', 'refinado'] },
+  { key: 'casca', label: 'Casca', slugs: ['duradouro', 'lento', 'obtuso'] },
+  { key: 'saber', label: 'Saber', slugs: ['perspicaz', 'estudioso', 'ansioso'] },
+  { key: 'fofo', label: 'Fofo', slugs: ['lindo', 'fraco', 'ingenuo', 'medroso'] },
+  { key: 'assustador', label: 'Assustador', slugs: ['ameacador', 'intimidante', 'cicatrizado'] },
+  { key: 'velocidade', label: 'Deslocamento', slugs: ['agil', 'leviano', 'nervoso'] },
+  { key: 'coracao', label: 'Corações', slugs: ['saudavel'] },
 ]
 
 const PRIMARY_ATTRS: Array<[keyof Atributos, string]> = [
@@ -44,7 +53,8 @@ function fmtAttr(v: number) {
 export default function Step4Attributes({
   size, traits, attrTraits, atributos, totalTracos, onAdd, onRemove,
 }: Props) {
-  const attrTraitList = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug))
+  const [activeGroup, setActiveGroup] = useState<keyof Atributos>(ATTR_GROUPS[0].key)
+  const visible = traits.filter(t => ATTR_GROUPS.find(g => g.key === activeGroup)!.slugs.includes(t.slug))
 
   return (
     <div className="flex flex-col gap-8">
@@ -259,127 +269,96 @@ export default function Step4Attributes({
             Traços de Atributo
           </h3>
 
-          {attrTraitList.map(trait => {
-            const count = attrTraits[trait.id] ?? 0
-            const canAdd = count < trait.max_selections && totalTracos < MAX_TRACOS
-            const canRemove = count > 0
-            const disabledReason = !canAdd && !canRemove
-              ? (count >= trait.max_selections ? `Limite de ${trait.max_selections}x atingido` : 'Limite de traços atingido')
-              : null
+          {/* Abas por atributo */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {ATTR_GROUPS.map(group => {
+              const isActive = activeGroup === group.key
+              return (
+                <button
+                  key={group.key}
+                  onClick={() => setActiveGroup(group.key)}
+                  style={{
+                    fontFamily: 'var(--font-cinzel)',
+                    fontSize: '0.6rem',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 6,
+                    border: isActive ? '1px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.15)',
+                    background: isActive ? 'rgba(var(--gold-rgb),0.12)' : 'transparent',
+                    color: isActive ? 'var(--gold)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {group.label}
+                </button>
+              )
+            })}
+          </div>
 
-            return (
-              <div
-                key={trait.id}
-                className={`card ${count > 0 ? 'card--selected' : ''}`}
-                style={{
-                  padding: '0.875rem 1rem',
-                  background: count > 0 ? undefined : 'var(--card)',
-                  borderRadius: 8,
-                  transition: 'all 0.2s',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
-                    alt={`${trait.name} — thumbnail disponível em breve`}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 4,
-                      objectFit: 'cover',
-                      border: '1px solid rgba(var(--gold-rgb),0.12)',
-                      flexShrink: 0,
-                    }}
-                  />
+          <div className="flex flex-col gap-2">
+            {visible.map(trait => {
+              const count = attrTraits[trait.id] ?? 0
+              const isSelected = count > 0
+              const canToggle = isSelected || totalTracos < MAX_TRACOS
+              const blockReason = !canToggle ? 'Limite de traços atingido' : null
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span style={{
-                        fontFamily: 'var(--font-cinzel)',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        color: count > 0 ? 'var(--gold-light)' : 'var(--text)',
+              return (
+                <div
+                  key={trait.id}
+                  className={`card ${isSelected ? 'card--selected' : ''}`}
+                  style={{
+                    background: isSelected ? undefined : 'var(--card)',
+                    borderRadius: 8,
+                    opacity: !canToggle ? 0.38 : 1,
+                    transition: 'all 0.2s',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <button
+                    onClick={() => (isSelected ? onRemove(trait.id) : onAdd(trait.id))}
+                    disabled={!canToggle}
+                    className="text-left w-full"
+                    style={{ padding: '0.875rem 1rem', cursor: canToggle ? 'pointer' : 'not-allowed', background: 'transparent', border: 'none', display: 'block', width: '100%' }}
+                    title={blockReason ?? undefined}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div style={{
+                        width: 18, height: 18, flexShrink: 0, marginTop: 2,
+                        border: isSelected ? '2px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.3)',
+                        borderRadius: 3,
+                        background: isSelected ? 'rgba(var(--gold-rgb),0.18)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
                       }}>
-                        {trait.name}
-                      </span>
-                      {trait.max_selections > 1 && (
-                        <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.48rem' }}>
-                          máx {trait.max_selections}×
-                        </span>
-                      )}
-                    </div>
-                    <p style={{
-                      fontFamily: 'var(--font-im-fell)',
-                      fontStyle: 'italic',
-                      fontSize: '0.8rem',
-                      color: 'rgba(var(--text-rgb),0.42)',
-                      marginTop: '0.25rem',
-                    }}>
-                      {trait.mechanical_effect}
-                    </p>
-                    {disabledReason && (
-                      <p style={{
-                        fontFamily: 'var(--font-cinzel)',
-                        fontSize: '0.55rem',
-                        color: 'var(--text-muted)',
-                        marginTop: '0.3rem',
-                      }} title={disabledReason}>
-                        {disabledReason}
-                      </p>
-                    )}
-                  </div>
+                        {isSelected && <span style={{ color: 'var(--gold)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>}
+                      </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => onRemove(trait.id)}
-                      disabled={!canRemove}
-                      className="counter-btn counter-btn--dec"
-                      style={{
-                        width: 26, height: 26,
-                        color: 'var(--gold-light)',
-                        fontSize: '1rem',
-                        lineHeight: 1,
-                        cursor: canRemove ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      −
-                    </button>
-                    <span style={{
-                      fontFamily: 'var(--font-cinzel)',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      color: count > 0 ? 'var(--gold-light)' : 'var(--text-muted)',
-                      minWidth: 16,
-                      textAlign: 'center',
-                    }}>
-                      {count}
-                    </span>
-                    <button
-                      onClick={() => onAdd(trait.id)}
-                      disabled={!canAdd}
-                      className="counter-btn counter-btn--inc"
-                      style={{
-                        width: 26, height: 26,
-                        color: 'var(--gold)',
-                        fontSize: '1rem',
-                        lineHeight: 1,
-                        cursor: canAdd ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
+                        alt={`${trait.name} — thumbnail disponível em breve`}
+                        style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', border: '1px solid rgba(var(--gold-rgb),0.12)', flexShrink: 0 }}
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', fontWeight: 600, color: isSelected ? 'var(--gold-light)' : 'var(--text)' }}>
+                          {trait.name}
+                        </span>
+                        <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'rgba(var(--text-rgb),0.48)', marginTop: '0.3rem', lineHeight: 1.6 }}>
+                          {trait.mechanical_effect}
+                        </p>
+                        {blockReason && (
+                          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                            {blockReason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
 
           <p style={{
             fontFamily: 'var(--font-im-fell)',
@@ -388,7 +367,7 @@ export default function Step4Attributes({
             color: 'rgba(var(--text-rgb),0.3)',
             marginTop: '0.25rem',
           }}>
-            Traços negativos (Frágil, Fraco) reduzem um atributo, mas podem ser combinados com traços positivos.
+            Cada traço de atributo é um pico único — escolha um por atributo ou combine vários.
           </p>
         </div>
       </div>

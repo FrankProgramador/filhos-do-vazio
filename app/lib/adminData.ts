@@ -1,5 +1,5 @@
 import { apiFetch } from '@/app/lib/api'
-import type { EquipmentPackage, GameTrait, Item, Size, Trilha } from '@/app/lib/gameData'
+import type { Ability, EquipmentPackage, GameTrait, Item, Size, Trigger, Trilha } from '@/app/lib/gameData'
 
 function authed<T>(path: string, token: string | null, options: RequestInit = {}): Promise<T> {
   return apiFetch<T>(path, options, token)
@@ -81,4 +81,32 @@ export const adminPackages = {
     authed<EquipmentPackage>(`/api/admin/equipment-packages/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/equipment-packages/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Triggers ─────────────────────────────────────────────────────────────
+
+export type TriggerPayload = Omit<Trigger, 'id'>
+
+export const adminTriggers = {
+  list: (token: string | null) => authed<Trigger[]>('/api/admin/triggers', token),
+  create: (token: string | null, data: TriggerPayload) =>
+    authed<Trigger>('/api/admin/triggers', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: TriggerPayload) =>
+    authed<Trigger>(`/api/admin/triggers/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/triggers/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Abilities ────────────────────────────────────────────────────────────
+
+export type AbilityPayload = Omit<Ability, 'id' | 'triggers'> & { trigger_ids: number[] }
+
+export const adminAbilities = {
+  list: (token: string | null) => authed<Ability[]>('/api/admin/abilities', token),
+  create: (token: string | null, data: AbilityPayload) =>
+    authed<Ability>('/api/admin/abilities', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: AbilityPayload) =>
+    authed<Ability>(`/api/admin/abilities/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
 }

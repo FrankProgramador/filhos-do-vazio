@@ -106,7 +106,7 @@ export default function AdminTamanhosPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {ATTR_FIELDS.map(attr => (
               <Field key={attr} label={attr}>
-                <Input type="number" step="0.5" value={form[attr] as number} onChange={e => setForm({ ...form, [attr]: Number(e.target.value) })} />
+                <Input type="number" step="1" value={form[attr] as number} onChange={e => setForm({ ...form, [attr]: Number(e.target.value) })} />
               </Field>
             ))}
           </div>

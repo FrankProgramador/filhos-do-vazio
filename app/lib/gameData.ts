@@ -90,6 +90,38 @@ export type Trilha = {
   aumento: number
 }
 
+export type TriggerConditionType = 'none' | 'target_health_less_than' | 'target_has_status' | 'caster_has_effect' | 'custom'
+export type TriggerTargetType = 'self' | 'target' | 'allies' | 'enemies' | 'area'
+export type AreaShape = 'self' | 'cone' | 'explosion' | 'line' | 'cube'
+
+export type Trigger = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  condition_type: TriggerConditionType
+  condition_value: Record<string, unknown> | null
+  target_type: TriggerTargetType
+  area_shape: AreaShape | null
+  area_params: Record<string, unknown> | null
+}
+
+export type AbilityType = 'active' | 'passive' | 'reaction'
+
+export type Ability = {
+  id: number
+  name: string
+  slug: string
+  description: string
+  type: AbilityType
+  activation_cost: Record<string, number> | null
+  cooldown: number
+  is_magic: boolean
+  is_unique: boolean
+  image: string | null
+  triggers: Trigger[]
+}
+
 export type CharSheet = {
   nome: string
   idade: string

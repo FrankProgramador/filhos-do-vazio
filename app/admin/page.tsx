@@ -6,6 +6,8 @@ const cards = [
   { href: '/admin/itens', label: 'Itens', desc: 'Armas, armaduras, ferramentas e consumíveis.' },
   { href: '/admin/pacotes', label: 'Pacotes de Equipamento', desc: 'Conjuntos iniciais de itens para a criação de personagem.' },
   { href: '/admin/trilhas', label: 'Trilhas', desc: 'Caminhos marciais e místicos.' },
+  { href: '/admin/habilidades', label: 'Habilidades', desc: 'Habilidades ativas, passivas e de reação concedidas por trilhas, itens e traços.' },
+  { href: '/admin/gatilhos', label: 'Gatilhos', desc: 'Eventos e condições que ativam habilidades.' },
 ]
 
 export default function AdminHomePage() {
