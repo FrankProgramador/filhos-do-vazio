@@ -1,20 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import type { GameTrait, TraitCategory, TraitRarity } from '@/app/lib/gameData'
+import type { Atributos, GameTrait, Size, TraitCategory, TraitRarity } from '@/app/lib/gameData'
 import { MAX_RARE, MAX_REMARKABLE, MAX_TRACOS } from '@/app/lib/gameData'
-
-// Traços de atributo (point-buy) já são escolhidos no passo anterior — não aparecem aqui.
-const ATTR_TRAIT_SLUGS = [
-  'poderoso', 'bruto', 'encouracado',
-  'gracioso', 'fragil', 'escorregadio', 'refinado',
-  'duradouro', 'lento', 'obtuso',
-  'perspicaz', 'estudioso', 'ansioso',
-  'lindo', 'fraco', 'ingenuo', 'medroso',
-  'ameacador', 'intimidante', 'cicatrizado',
-  'agil', 'leviano', 'nervoso',
-  'saudavel',
-]
+import AttributesPanel from './AttributesPanel'
+import ChosenTraitsPanel, { type ChosenTraitEntry } from './ChosenTraitsPanel'
+import { ATTR_TRAIT_SLUGS } from './Step4Attributes'
 
 const CATEGORY_LABELS: Record<TraitCategory, string> = {
   body: 'Corporais',
@@ -47,16 +38,21 @@ const RARITY_CAPS: Record<'common' | 'remarkable' | 'rare', number> = {
 }
 
 interface Props {
+  size: Size
   traits: GameTrait[]
+  atributos: Atributos
+  attrTraits: Record<number, number>
   specialTraits: number[]
   subTraits: number[]
   totalTracos: number
+  onRemoveAttr: (id: number) => void
   onToggleSpecial: (id: number) => void
   onToggleSub: (parentId: number, subId: number) => void
 }
 
 export default function Step5Special({
-  traits, specialTraits, subTraits, totalTracos, onToggleSpecial, onToggleSub,
+  size, traits, atributos, attrTraits, specialTraits, subTraits, totalTracos,
+  onRemoveAttr, onToggleSpecial, onToggleSub,
 }: Props) {
   const pool = traits.filter(t =>
     t.rarity !== 'personality' &&
@@ -73,8 +69,40 @@ export default function Step5Special({
 
   const visible = pool.filter(t => t.category === activeCategory && (rarityFilter === 'all' || t.rarity === rarityFilter))
 
+  const chosenAttrTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && (attrTraits[t.id] ?? 0) > 0)
+  const chosenSpecialTraits = [...specialTraits, ...subTraits]
+    .map(id => traits.find(t => t.id === id))
+    .filter((t): t is GameTrait => !!t)
+
+  const chosenItems: ChosenTraitEntry[] = [
+    ...chosenAttrTraits.map(trait => ({
+      id: trait.id,
+      name: trait.name,
+      badge: trait.prerequisite_trait_id ? 'Subtraço' : 'Traço',
+      detail: trait.mechanical_effect,
+      onRemove: () => onRemoveAttr(trait.id),
+    })),
+    ...chosenSpecialTraits.map(trait => ({
+      id: trait.id,
+      name: trait.name,
+      badge: trait.prerequisite_trait_id ? 'Sub-traço' : RARITY_LABELS[trait.rarity],
+      detail: trait.description,
+      onRemove: () => (trait.prerequisite_trait_id
+        ? onToggleSub(trait.prerequisite_trait_id, trait.id)
+        : onToggleSpecial(trait.id)),
+    })),
+  ]
+
   return (
     <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <AttributesPanel size={size} atributos={atributos} />
+        <ChosenTraitsPanel
+          items={chosenItems}
+          emptyText="Nenhum traço escolhido ainda."
+        />
+      </div>
+
       <div className="flex items-start gap-4 justify-between flex-wrap">
         <p style={{
           fontFamily: 'var(--font-im-fell)',
@@ -203,13 +231,6 @@ export default function Step5Special({
                     {isSelected && <span style={{ color: 'var(--gold)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>}
                   </div>
 
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
-                    alt={`${trait.name} — thumbnail disponível em breve`}
-                    style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', border: '1px solid rgba(var(--gold-rgb),0.12)', flexShrink: 0 }}
-                  />
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', fontWeight: 600, color: isSelected ? 'var(--gold-light)' : 'var(--text)' }}>
@@ -281,13 +302,6 @@ export default function Step5Special({
                             }}>
                               {isSubSelected && <span style={{ color: 'var(--gold)', fontSize: '0.5rem', lineHeight: 1 }}>✓</span>}
                             </div>
-
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src="https://placehold.co/36x36/1B1D21/B8924A?text=Em+Breve"
-                              alt={`${sub.name} — thumbnail disponível em breve`}
-                              style={{ width: 32, height: 32, borderRadius: 3, objectFit: 'cover', border: '1px solid rgba(var(--gold-rgb),0.1)', flexShrink: 0 }}
-                            />
 
                             <div className="flex-1 min-w-0">
                               <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.7rem', fontWeight: 600, color: isSubSelected ? 'var(--gold-light)' : 'var(--text)' }}>

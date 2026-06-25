@@ -88,6 +88,8 @@ export type Trilha = {
   beneficios: string
   barra_aumentada: 'estamina' | 'alma'
   aumento: number
+  /** Habilidades de nível 1 desta trilha — é tudo que /api/trilhas retorna aqui. */
+  abilities: Ability[]
 }
 
 export type TriggerConditionType = 'none' | 'target_health_less_than' | 'target_has_status' | 'caster_has_effect' | 'custom'
@@ -232,14 +234,34 @@ export function baselineAttributes(size: Size): Atributos {
  */
 export type SelectedTrait = { trait: GameTrait; quantity: number }
 
+/**
+ * Estamina e Alma não são mais valores fixos por tamanho — são derivados como
+ * 3 + Graça e 3 + Saber (já com os modificadores de traço aplicados a esses dois
+ * atributos). Modificadores que afetam estamina/alma diretamente (ex: Devoto) são
+ * adiados e aplicados só depois dessa derivação, para não serem sobrescritos.
+ */
 export function calculateAttributes(size: Size, selected: SelectedTrait[]): Atributos {
   const attrs = baselineAttributes(size)
+  const deferred: Array<{ modifier: Modifier; quantity: number }> = []
 
   for (const { trait, quantity } of selected) {
     for (const modifier of trait.modifiers) {
+      if (modifier.attribute === 'estamina' || modifier.attribute === 'alma') {
+        deferred.push({ modifier, quantity })
+        continue
+      }
       for (let i = 0; i < quantity; i++) {
         attrs[modifier.attribute] = applyModifier(attrs[modifier.attribute], modifier)
       }
+    }
+  }
+
+  attrs.estamina = 3 + attrs.graca
+  attrs.alma = 3 + attrs.saber
+
+  for (const { modifier, quantity } of deferred) {
+    for (let i = 0; i < quantity; i++) {
+      attrs[modifier.attribute] = applyModifier(attrs[modifier.attribute], modifier)
     }
   }
 

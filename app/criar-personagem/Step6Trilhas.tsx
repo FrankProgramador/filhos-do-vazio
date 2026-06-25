@@ -1,10 +1,9 @@
-import type { Atributos, Trilha } from '@/app/lib/gameData'
+import type { Trilha } from '@/app/lib/gameData'
 
 interface Props {
   trilhas: Trilha[]
   selectedId: number | null
   onSelect: (id: number) => void
-  atributos: Atributos
 }
 
 const TIPO_CONFIG = {
@@ -21,8 +20,6 @@ const TIPO_CONFIG = {
     glow: 'rgba(var(--void-light-rgb),0.12)',
   },
 }
-
-const BARRA_LABEL = { estamina: 'Estamina', alma: 'Alma' } as const
 
 function TrailCard({ trilha, isSelected, onSelect }: { trilha: Trilha; isSelected: boolean; onSelect: () => void }) {
   const cfg = TIPO_CONFIG[trilha.tipo]
@@ -41,17 +38,6 @@ function TrailCard({ trilha, isSelected, onSelect }: { trilha: Trilha; isSelecte
       }}
     >
       <div className="flex items-start gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={trilha.thumb ?? 'https://placehold.co/72x54/1B1D21/B8924A?text=Trilha'}
-          alt={`${trilha.nome} — thumbnail disponível em breve`}
-          style={{
-            width: 72, height: 54, borderRadius: 5, objectFit: 'cover',
-            border: `1px solid ${isSelected ? cfg.border : 'rgba(var(--gold-rgb),0.1)'}`,
-            flexShrink: 0, transition: 'border-color 0.2s',
-          }}
-        />
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span style={{
@@ -63,9 +49,6 @@ function TrailCard({ trilha, isSelected, onSelect }: { trilha: Trilha; isSelecte
             }}>
               {trilha.nome}
             </span>
-            <span className="ddb-badge" style={{ fontSize: '0.48rem', color: cfg.color, borderColor: cfg.border, background: cfg.bg }}>
-              +{trilha.aumento} {BARRA_LABEL[trilha.barra_aumentada]}
-            </span>
           </div>
           <p style={{
             fontFamily: 'var(--font-im-fell)',
@@ -76,6 +59,20 @@ function TrailCard({ trilha, isSelected, onSelect }: { trilha: Trilha; isSelecte
           }}>
             {trilha.beneficios}
           </p>
+
+          {trilha.abilities[0] && (
+            <div style={{ marginTop: '0.6rem', paddingTop: '0.6rem', borderTop: '1px solid rgba(var(--gold-rgb),0.08)' }}>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.44rem' }}>Nível 1</span>
+                <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: isSelected ? cfg.color : 'var(--text)' }}>
+                  {trilha.abilities[0].name}
+                </span>
+              </div>
+              <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'rgba(var(--text-rgb),0.42)', lineHeight: 1.55 }}>
+                {trilha.abilities[0].description}
+              </p>
+            </div>
+          )}
         </div>
 
         {isSelected && <span style={{ color: cfg.color, fontSize: '1rem', flexShrink: 0, marginTop: 2 }}>✓</span>}
@@ -84,10 +81,9 @@ function TrailCard({ trilha, isSelected, onSelect }: { trilha: Trilha; isSelecte
   )
 }
 
-export default function Step5Trilhas({ trilhas, selectedId, onSelect, atributos }: Props) {
+export default function Step5Trilhas({ trilhas, selectedId, onSelect }: Props) {
   const marciais = trilhas.filter(t => t.tipo === 'marcial')
   const misticos = trilhas.filter(t => t.tipo === 'mistico')
-  const selected = trilhas.find(t => t.id === selectedId)
 
   return (
     <div className="flex flex-col gap-6">
@@ -136,23 +132,6 @@ export default function Step5Trilhas({ trilhas, selectedId, onSelect, atributos 
           </div>
         </div>
       </div>
-
-      {selected && (() => {
-        const cfg = TIPO_CONFIG[selected.tipo]
-        const baseBar = selected.barra_aumentada === 'estamina' ? atributos.estamina : atributos.alma
-        return (
-          <div style={{ padding: '1rem 1.25rem', background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 8 }}>
-            <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.88rem', color: 'rgba(var(--text-rgb),0.62)', lineHeight: 1.7, margin: 0 }}>
-              Com a trilha{' '}
-              <strong style={{ fontStyle: 'normal', color: cfg.color }}>{selected.nome}</strong>,
-              sua barra de{' '}
-              <strong style={{ fontStyle: 'normal', color: cfg.color }}>{BARRA_LABEL[selected.barra_aumentada]}</strong>{' '}
-              sobe de {baseBar} para{' '}
-              <strong style={{ fontStyle: 'normal', color: cfg.color }}>{baseBar + selected.aumento}</strong>.
-            </p>
-          </div>
-        )
-      })()}
     </div>
   )
 }

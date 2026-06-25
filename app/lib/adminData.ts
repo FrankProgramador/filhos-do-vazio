@@ -21,7 +21,7 @@ export const adminSizes = {
 
 // ── Trilhas ──────────────────────────────────────────────────────────────
 
-export type TrilhaPayload = Omit<Trilha, 'id'>
+export type TrilhaPayload = Omit<Trilha, 'id' | 'abilities'>
 
 export const adminTrilhas = {
   list: (token: string | null) => authed<Trilha[]>('/api/admin/trilhas', token),

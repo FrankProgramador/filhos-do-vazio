@@ -133,6 +133,7 @@ export default function CriarPersonagem() {
   const addAttrTrait = (id: number) => {
     const trait = traits.find(t => t.id === id)
     if (!trait) return
+    if (trait.prerequisite_trait_id && !(sheet.attrTraits[trait.prerequisite_trait_id] > 0)) return
     const curr = sheet.attrTraits[id] ?? 0
     if (curr >= trait.max_selections || totalTracos >= MAX_TRACOS) return
     setSheet(s => ({ ...s, attrTraits: { ...s.attrTraits, [id]: curr + 1 } }))
@@ -141,10 +142,15 @@ export default function CriarPersonagem() {
   const removeAttrTrait = (id: number) => {
     const curr = sheet.attrTraits[id] ?? 0
     if (curr <= 0) return
+    const childIds = traits.filter(t => t.prerequisite_trait_id === id).map(t => t.id)
     setSheet(s => {
       const next = { ...s.attrTraits }
-      if (curr === 1) delete next[id]
-      else next[id] = curr - 1
+      if (curr === 1) {
+        delete next[id]
+        childIds.forEach(cid => delete next[cid])
+      } else {
+        next[id] = curr - 1
+      }
       return { ...s, attrTraits: next }
     })
   }
@@ -371,18 +377,22 @@ export default function CriarPersonagem() {
             onRemove={removeAttrTrait}
           />
         )}
-        {step === 5 && (
+        {step === 5 && size && atributos && (
           <Step5Special
+            size={size}
             traits={traits}
+            atributos={atributos}
+            attrTraits={sheet.attrTraits}
             specialTraits={sheet.specialTraits}
             subTraits={sheet.subTraits}
             totalTracos={totalTracos}
+            onRemoveAttr={removeAttrTrait}
             onToggleSpecial={toggleSpecialTrait}
             onToggleSub={toggleSubTrait}
           />
         )}
         {step === 6 && atributos && (
-          <Step6Trilhas trilhas={trilhas} selectedId={sheet.trilhaId} onSelect={setTrilhaId} atributos={atributos} />
+          <Step6Trilhas trilhas={trilhas} selectedId={sheet.trilhaId} onSelect={setTrilhaId} />
         )}
         {step === 7 && (
           <Step7Equipment

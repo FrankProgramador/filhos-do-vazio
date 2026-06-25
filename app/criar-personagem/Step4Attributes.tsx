@@ -1,39 +1,22 @@
-'use client'
-
-import { useState } from 'react'
 import type { Atributos, GameTrait, Size } from '@/app/lib/gameData'
 import { MAX_TRACOS } from '@/app/lib/gameData'
+import AttributesPanel from './AttributesPanel'
+import ChosenTraitsPanel, { type ChosenTraitEntry } from './ChosenTraitsPanel'
 
-// Traços de atributo (point-buy) agrupados pelo atributo que afetam — cada grupo
-// vira uma aba no painel da direita, igual ao agrupamento por categoria do passo 5.
-const ATTR_GROUPS: Array<{ key: keyof Atributos; label: string; slugs: string[] }> = [
-  { key: 'poder', label: 'Poder', slugs: ['poderoso', 'bruto', 'encouracado'] },
-  { key: 'graca', label: 'Graça', slugs: ['gracioso', 'fragil', 'escorregadio', 'refinado'] },
-  { key: 'casca', label: 'Casca', slugs: ['duradouro', 'lento', 'obtuso'] },
-  { key: 'saber', label: 'Saber', slugs: ['perspicaz', 'estudioso', 'ansioso'] },
-  { key: 'fofo', label: 'Fofo', slugs: ['lindo', 'fraco', 'ingenuo', 'medroso'] },
-  { key: 'assustador', label: 'Assustador', slugs: ['ameacador', 'intimidante', 'cicatrizado'] },
-  { key: 'velocidade', label: 'Deslocamento', slugs: ['agil', 'leviano', 'nervoso'] },
-  { key: 'coracao', label: 'Corações', slugs: ['saudavel'] },
-]
-
-const PRIMARY_ATTRS: Array<[keyof Atributos, string]> = [
-  ['poder', 'Poder'],
-  ['saber', 'Saber'],
-  ['casca', 'Casca'],
-  ['graca', 'Graça'],
-]
-
-const SECONDARY_ATTRS: Array<[keyof Atributos, string]> = [
-  ['coracao', 'Coração'],
-  ['estamina', 'Estamina'],
-  ['alma', 'Alma'],
-  ['velocidade', 'Velocidade'],
-]
-
-const SOCIAL_ATTRS: Array<[keyof Atributos, string, string]> = [
-  ['fofo', 'Fofo', '🌸'],
-  ['assustador', 'Assustador', '💀'],
+// Traços de atributo (point-buy) — o primeiro de cada grupo é o principal (slug
+// raiz, sem prerequisite_trait_id); os demais são subtraços dele no banco e só
+// aparecem depois que o principal é selecionado. Cada subtraço aplica seu efeito
+// completo, e ele acumula com o do principal (ex: Poderoso +1 Poder, depois
+// Bruto +1 Poder/-1 Fofo = +2 Poder, -1 Fofo no total).
+export const ATTR_TRAIT_SLUGS = [
+  'poderoso', 'bruto', 'encouracado',
+  'gracioso', 'fragil', 'escorregadio', 'refinado',
+  'duradouro', 'lento', 'obtuso',
+  'perspicaz', 'estudioso', 'ansioso',
+  'lindo', 'fraco', 'ingenuo', 'medroso',
+  'ameacador', 'intimidante', 'cicatrizado',
+  'agil', 'leviano', 'nervoso',
+  'saudavel',
 ]
 
 interface Props {
@@ -46,15 +29,18 @@ interface Props {
   onRemove: (id: number) => void
 }
 
-function fmtAttr(v: number) {
-  return Number.isInteger(v) ? v.toString() : v.toFixed(1)
-}
-
 export default function Step4Attributes({
   size, traits, attrTraits, atributos, totalTracos, onAdd, onRemove,
 }: Props) {
-  const [activeGroup, setActiveGroup] = useState<keyof Atributos>(ATTR_GROUPS[0].key)
-  const visible = traits.filter(t => ATTR_GROUPS.find(g => g.key === activeGroup)!.slugs.includes(t.slug))
+  const rootTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && t.prerequisite_trait_id === null)
+  const selectedAttrTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && (attrTraits[t.id] ?? 0) > 0)
+  const chosenItems: ChosenTraitEntry[] = selectedAttrTraits.map(trait => ({
+    id: trait.id,
+    name: trait.name,
+    badge: trait.prerequisite_trait_id ? 'Subtraço' : 'Traço',
+    detail: trait.mechanical_effect,
+    onRemove: () => onRemove(trait.id),
+  }))
 
   return (
     <div className="flex flex-col gap-8">
@@ -72,8 +58,7 @@ export default function Step4Attributes({
           color: 'rgba(var(--text-rgb),0.5)',
           margin: 0,
         }}>
-          Traços de atributo são livres — o custo de cada um já está embutido no próprio
-          atributo que ele altera (ex: Fraco já dá -1 Poder).
+          Primeiro selecione os traços de atributo, eles definem o personagem.
         </p>
         <div style={{
           flexShrink: 0,
@@ -105,271 +90,162 @@ export default function Step4Attributes({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left: Attributes */}
-        <div className="flex flex-col gap-4">
-          <h3 style={{
-            fontFamily: 'var(--font-cinzel)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-          }}>
-            Atributos — {size.name}
-          </h3>
+        <AttributesPanel size={size} atributos={atributos} />
+        <ChosenTraitsPanel
+          items={chosenItems}
+          emptyText="Nenhum traço de atributo escolhido ainda. Escolha abaixo."
+        />
+      </div>
 
-          <div>
-            <p style={{
-              fontFamily: 'var(--font-cinzel)',
-              fontSize: '0.52rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--text-muted)',
-              marginBottom: '0.5rem',
-            }}>
-              Primários
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {PRIMARY_ATTRS.map(([key, label]) => (
-                <div key={key} style={{
-                  padding: '0.75rem',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid rgba(var(--gold-rgb),0.15)',
-                  borderRadius: 6,
-                  textAlign: 'center',
-                }}>
-                  <div style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '1.4rem',
-                    fontWeight: 700,
-                    color: 'var(--text)',
-                    lineHeight: 1,
-                  }}>
-                    {fmtAttr(atributos[key])}
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.5rem',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                    marginTop: '0.35rem',
-                  }}>
-                    {label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Below: Trait cards */}
+      <div className="flex flex-col gap-3">
+        <h3 style={{
+          fontFamily: 'var(--font-cinzel)',
+          fontSize: '0.65rem',
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: 'var(--gold)',
+        }}>
+          Traços de Atributo
+        </h3>
 
-          <div>
-            <p style={{
-              fontFamily: 'var(--font-cinzel)',
-              fontSize: '0.52rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--text-muted)',
-              marginBottom: '0.5rem',
-            }}>
-              Sociais
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {SOCIAL_ATTRS.map(([key, label, icon]) => (
-                <div key={key} style={{
-                  padding: '0.75rem',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid rgba(var(--gold-rgb),0.1)',
-                  borderRadius: 6,
-                  textAlign: 'center',
-                }}>
-                  <div style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '1.4rem',
-                    fontWeight: 700,
-                    color: 'var(--text)',
-                    lineHeight: 1,
-                  }}>
-                    {fmtAttr(atributos[key])}
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.5rem',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                    marginTop: '0.35rem',
-                  }}>
-                    {icon} {label}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p style={{
-              fontFamily: 'var(--font-im-fell)',
-              fontStyle: 'italic',
-              fontSize: '0.7rem',
-              color: 'rgba(var(--text-rgb),0.28)',
-              marginTop: '0.4rem',
-              lineHeight: 1.5,
-            }}>
-              Traços como Lindo (+Fofo) e Assustador (+Assustador) alteram estes valores.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {rootTraits.map(trait => {
+            const count = attrTraits[trait.id] ?? 0
+            const isSelected = count > 0
+            const canToggle = isSelected || totalTracos < MAX_TRACOS
+            const blockReason = !canToggle ? 'Limite de traços atingido' : null
+            const children = traits.filter(t => t.prerequisite_trait_id === trait.id)
 
-          <div>
-            <p style={{
-              fontFamily: 'var(--font-cinzel)',
-              fontSize: '0.52rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: 'var(--text-muted)',
-              marginBottom: '0.5rem',
-            }}>
-              Secundários
-            </p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {SECONDARY_ATTRS.map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between" style={{
-                  padding: '0.4rem 0.65rem',
-                  background: 'rgba(var(--gold-rgb),0.04)',
-                  border: '1px solid rgba(var(--gold-rgb),0.08)',
-                  borderRadius: 4,
-                }}>
-                  <span style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.48rem',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                  }}>
-                    {label}
-                  </span>
-                  <span style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    color: 'rgba(var(--text-rgb),0.6)',
-                  }}>
-                    {fmtAttr(atributos[key])}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Trait list */}
-        <div className="flex flex-col gap-3">
-          <h3 style={{
-            fontFamily: 'var(--font-cinzel)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'var(--gold)',
-          }}>
-            Traços de Atributo
-          </h3>
-
-          {/* Abas por atributo */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {ATTR_GROUPS.map(group => {
-              const isActive = activeGroup === group.key
-              return (
+            return (
+              <div
+                key={trait.id}
+                className={`card ${isSelected ? 'card--selected' : ''}`}
+                style={{
+                  background: isSelected ? undefined : 'var(--card)',
+                  borderRadius: 8,
+                  opacity: !canToggle ? 0.38 : 1,
+                  transition: 'all 0.2s',
+                  overflow: 'hidden',
+                }}
+              >
                 <button
-                  key={group.key}
-                  onClick={() => setActiveGroup(group.key)}
-                  style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.6rem',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    padding: '0.45rem 0.9rem',
-                    borderRadius: 6,
-                    border: isActive ? '1px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.15)',
-                    background: isActive ? 'rgba(var(--gold-rgb),0.12)' : 'transparent',
-                    color: isActive ? 'var(--gold)' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                  }}
+                  onClick={() => (isSelected ? onRemove(trait.id) : onAdd(trait.id))}
+                  disabled={!canToggle}
+                  className="text-left w-full"
+                  style={{ padding: '0.875rem 1rem', cursor: canToggle ? 'pointer' : 'not-allowed', background: 'transparent', border: 'none', display: 'block', width: '100%' }}
+                  title={blockReason ?? undefined}
                 >
-                  {group.label}
-                </button>
-              )
-            })}
-          </div>
+                  <div className="flex items-start gap-3">
+                    <div style={{
+                      width: 18, height: 18, flexShrink: 0, marginTop: 2,
+                      border: isSelected ? '2px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.3)',
+                      borderRadius: 3,
+                      background: isSelected ? 'rgba(var(--gold-rgb),0.18)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                    }}>
+                      {isSelected && <span style={{ color: 'var(--gold)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>}
+                    </div>
 
-          <div className="flex flex-col gap-2">
-            {visible.map(trait => {
-              const count = attrTraits[trait.id] ?? 0
-              const isSelected = count > 0
-              const canToggle = isSelected || totalTracos < MAX_TRACOS
-              const blockReason = !canToggle ? 'Limite de traços atingido' : null
-
-              return (
-                <div
-                  key={trait.id}
-                  className={`card ${isSelected ? 'card--selected' : ''}`}
-                  style={{
-                    background: isSelected ? undefined : 'var(--card)',
-                    borderRadius: 8,
-                    opacity: !canToggle ? 0.38 : 1,
-                    transition: 'all 0.2s',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <button
-                    onClick={() => (isSelected ? onRemove(trait.id) : onAdd(trait.id))}
-                    disabled={!canToggle}
-                    className="text-left w-full"
-                    style={{ padding: '0.875rem 1rem', cursor: canToggle ? 'pointer' : 'not-allowed', background: 'transparent', border: 'none', display: 'block', width: '100%' }}
-                    title={blockReason ?? undefined}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div style={{
-                        width: 18, height: 18, flexShrink: 0, marginTop: 2,
-                        border: isSelected ? '2px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.3)',
-                        borderRadius: 3,
-                        background: isSelected ? 'rgba(var(--gold-rgb),0.18)' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                      }}>
-                        {isSelected && <span style={{ color: 'var(--gold)', fontSize: '0.65rem', lineHeight: 1 }}>✓</span>}
-                      </div>
-
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="https://placehold.co/48x48/1B1D21/B8924A?text=Em+Breve"
-                        alt={`${trait.name} — thumbnail disponível em breve`}
-                        style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', border: '1px solid rgba(var(--gold-rgb),0.12)', flexShrink: 0 }}
-                      />
-
-                      <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', fontWeight: 600, color: isSelected ? 'var(--gold-light)' : 'var(--text)' }}>
                           {trait.name}
                         </span>
-                        <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'rgba(var(--text-rgb),0.48)', marginTop: '0.3rem', lineHeight: 1.6 }}>
-                          {trait.mechanical_effect}
-                        </p>
-                        {blockReason && (
-                          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                            {blockReason}
-                          </p>
+                        {children.length > 0 && (
+                          <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.45rem' }}>
+                            {children.length} subtraço{children.length !== 1 ? 's' : ''}
+                          </span>
                         )}
                       </div>
+                      <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'rgba(var(--text-rgb),0.48)', marginTop: '0.3rem', lineHeight: 1.6 }}>
+                        {trait.mechanical_effect}
+                      </p>
+                      {blockReason && (
+                        <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                          {blockReason}
+                        </p>
+                      )}
                     </div>
-                  </button>
-                </div>
-              )
-            })}
-          </div>
+                  </div>
+                </button>
 
-          <p style={{
-            fontFamily: 'var(--font-im-fell)',
-            fontStyle: 'italic',
-            fontSize: '0.78rem',
-            color: 'rgba(var(--text-rgb),0.3)',
-            marginTop: '0.25rem',
-          }}>
-            Cada traço de atributo é um pico único — escolha um por atributo ou combine vários.
-          </p>
+                {children.length > 0 && (
+                  <div style={{ margin: '0 1rem 0.875rem', padding: '0.75rem', background: 'rgba(var(--gold-rgb),0.04)', border: '1px solid rgba(var(--gold-rgb),0.1)', borderRadius: 6 }}>
+                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.48rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                      Subtraços disponíveis
+                    </p>
+
+                    <div className="flex flex-col gap-2">
+                      {children.map(sub => {
+                        const subCount = attrTraits[sub.id] ?? 0
+                        const isSubSelected = subCount > 0
+                        const canToggleSub = isSubSelected || (isSelected && totalTracos < MAX_TRACOS)
+                        const subBlockReason = !canToggleSub
+                          ? (!isSelected ? 'Escolha o traço principal primeiro' : 'Limite de traços atingido')
+                          : null
+
+                        return (
+                          <div
+                            key={sub.id}
+                            className="flex items-center gap-2.5"
+                            style={{
+                              padding: '0.6rem 0.75rem',
+                              background: isSubSelected ? 'rgba(var(--gold-rgb),0.09)' : 'rgba(var(--gold-rgb),0.02)',
+                              border: isSubSelected ? '1px solid rgba(var(--gold-rgb),0.22)' : '1px solid rgba(var(--gold-rgb),0.08)',
+                              borderRadius: 5,
+                              opacity: !canToggleSub ? 0.38 : 1,
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <button
+                              onClick={() => (isSubSelected ? onRemove(sub.id) : onAdd(sub.id))}
+                              disabled={!canToggleSub}
+                              className="text-left flex-1 min-w-0"
+                              title={subBlockReason ?? undefined}
+                              style={{ background: 'transparent', border: 'none', cursor: canToggleSub ? 'pointer' : 'not-allowed', padding: 0 }}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <div style={{
+                                  width: 14, height: 14, flexShrink: 0, marginTop: 2,
+                                  border: isSubSelected ? '2px solid rgba(var(--gold-rgb),0.7)' : '1px solid rgba(var(--gold-rgb),0.25)',
+                                  borderRadius: 2,
+                                  background: isSubSelected ? 'rgba(var(--gold-rgb),0.2)' : 'transparent',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  {isSubSelected && <span style={{ color: 'var(--gold)', fontSize: '0.5rem', lineHeight: 1 }}>✓</span>}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.7rem', fontWeight: 600, color: isSubSelected ? 'var(--gold-light)' : 'var(--text)' }}>
+                                    {sub.name}
+                                  </span>
+                                  <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.76rem', color: 'rgba(var(--text-rgb),0.4)', marginTop: '0.2rem', lineHeight: 1.5 }}>
+                                    {sub.mechanical_effect}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
+
+        <p style={{
+          fontFamily: 'var(--font-im-fell)',
+          fontStyle: 'italic',
+          fontSize: '0.78rem',
+          color: 'rgba(var(--text-rgb),0.3)',
+          marginTop: '0.25rem',
+        }}>
+          Cada traço principal tem subtraços — escolha o principal para poder selecioná-los.
+        </p>
       </div>
     </div>
   )
