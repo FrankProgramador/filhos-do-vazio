@@ -14,6 +14,7 @@ const cards = [
     title: 'Locais',
     text: 'Das cavernas esquecidas às cidadelas em ruínas, cada região guarda segredos e perigos. Antigas relíquias esperam por aqueles corajosos o suficiente para procurá-las.',
     alt: 'Ilustração de uma caverna com estalactites e insetos',
+    image: '/locais.jpeg',
     href: '/locais',
     cta: 'Explorar Locais →',
   },
@@ -44,12 +45,19 @@ export default function ReinoSection() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map(({ icon, title, text, alt, href, cta }) => (
+          {cards.map(({ icon, title, text, alt, image, href, cta }) => (
             <article key={title} className="lnd-card">
-              <div className="lnd-card-img" role="img" aria-label={alt}>
-                <span style={{ fontSize: '2.2rem', opacity: .5, position: 'relative', zIndex: 1 }} aria-hidden>{icon}</span>
-                <span style={{ position: 'relative', zIndex: 1 }}>{title}</span>
-              </div>
+              {image ? (
+                <div className="lnd-card-img" style={{ padding: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ) : (
+                <div className="lnd-card-img" role="img" aria-label={alt}>
+                  <span style={{ fontSize: '2.2rem', opacity: .5, position: 'relative', zIndex: 1 }} aria-hidden>{icon}</span>
+                  <span style={{ position: 'relative', zIndex: 1 }}>{title}</span>
+                </div>
+              )}
               <div className="p-6">
                 <h3
                   className="mb-3"
