@@ -792,7 +792,7 @@ body {
 
 .lnd-label {
   font-family: var(--font-cinzel), serif;
-  font-size: .65rem;
+  font-size: .75rem;
   letter-spacing: .35em;
   text-transform: uppercase;
   color: var(--gold);

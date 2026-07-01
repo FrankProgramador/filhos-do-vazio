@@ -67,7 +67,7 @@ export default function HeroSection() {
         </div>
 
         <p
-          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.58rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
+          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.68rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
         >
           Um RPG de mesa inspirado em Hollow Knight
         </p>
@@ -80,7 +80,7 @@ export default function HeroSection() {
         </h1>
 
         <p
-          style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.82rem, 1.5vw, .98rem)', color: 'rgba(var(--text-rgb),.72)', lineHeight: 1.85, maxWidth: 340 }}
+          style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.95rem, 1.7vw, 1.1rem)', color: 'rgba(var(--text-rgb),.72)', lineHeight: 1.85, maxWidth: 360 }}
         >
           Aventuras em um reino decadente de insetos.<br />
           Forje seu legado nas sombras de Hallownest.
@@ -93,7 +93,7 @@ export default function HeroSection() {
         <Link
           href="#reino"
           className="hk-btn hk-btn-soul"
-          style={{ fontSize: '.8rem', padding: '.85rem 2.2rem', borderRadius: 8 }}
+          style={{ fontSize: '.9rem', padding: '.85rem 2.2rem', borderRadius: 8 }}
         >
           Explorar o Mundo
         </Link>

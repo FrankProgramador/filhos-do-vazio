@@ -43,7 +43,7 @@ export default function LegadoSection() {
         >
           🦋 Crie seu Legado
         </h2>
-        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
+        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1.05rem', maxWidth: 560, margin: '0 auto 3rem', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
           Quatro passos simples para dar vida a um inseto que habitará as lendas de Hallownest.
         </p>
 
@@ -57,7 +57,7 @@ export default function LegadoSection() {
           >
             <div className="text-center" style={{ position: 'relative', zIndex: 1 }}>
               <SoulSvg />
-              <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.65rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.72rem', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 Exemplo de Ficha
               </p>
             </div>
@@ -84,10 +84,10 @@ export default function LegadoSection() {
                 <li key={n} className="flex gap-4 items-start">
                   <div className="step-num" aria-hidden>{n}</div>
                   <div>
-                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.85rem', fontWeight: 600, color: 'var(--text)', marginBottom: '.25rem', letterSpacing: '.04em' }}>
+                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.95rem', fontWeight: 600, color: 'var(--text)', marginBottom: '.25rem', letterSpacing: '.04em' }}>
                       {title}
                     </p>
-                    <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.87rem', lineHeight: 1.65, fontFamily: 'var(--font-im-fell)' }}>
+                    <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1rem', lineHeight: 1.7, fontFamily: 'var(--font-im-fell)' }}>
                       {desc}
                     </p>
                   </div>
@@ -96,7 +96,7 @@ export default function LegadoSection() {
             </ol>
 
             <div className="mt-10">
-              <Link href="#" className="hk-btn hk-btn-gold" style={{ fontSize: '.8rem', padding: '.85rem 2.2rem', borderRadius: 8 }}>
+              <Link href="#" className="hk-btn hk-btn-gold" style={{ fontSize: '.9rem', padding: '.85rem 2.2rem', borderRadius: 8 }}>
                 🦋 Começar a Criar
               </Link>
             </div>

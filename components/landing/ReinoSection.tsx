@@ -40,7 +40,7 @@ export default function ReinoSection() {
         >
           🌿 O Reino em Ruínas
         </h2>
-        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem' }}>
+        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1.05rem', maxWidth: 560, margin: '0 auto 3rem' }}>
           Explore os fragmentos de Hallownest — um reino que caiu, mas nunca foi esquecido.
         </p>
 
@@ -61,11 +61,11 @@ export default function ReinoSection() {
               <div className="p-6">
                 <h3
                   className="mb-3"
-                  style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', fontWeight: 600, color: 'var(--gold)', letterSpacing: '.06em' }}
+                  style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', fontWeight: 600, color: 'var(--gold)', letterSpacing: '.06em' }}
                 >
                   {title}
                 </h3>
-                <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.9rem', lineHeight: 1.75, fontFamily: 'var(--font-im-fell)' }}>
+                <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1rem', lineHeight: 1.75, fontFamily: 'var(--font-im-fell)' }}>
                   {text}
                 </p>
                 {href && cta && (
@@ -73,7 +73,7 @@ export default function ReinoSection() {
                     <Link
                       href={href}
                       className="hk-btn hk-btn-soul"
-                      style={{ fontSize: '.72rem', padding: '.65rem 1.4rem', borderRadius: 6 }}
+                      style={{ fontSize: '.82rem', padding: '.65rem 1.4rem', borderRadius: 6 }}
                     >
                       {cta}
                     </Link>

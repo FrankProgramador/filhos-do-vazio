@@ -36,7 +36,7 @@ export default function SistemaSection() {
         >
           📖 Como Jogar
         </h2>
-        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', maxWidth: 560, margin: '0 auto 3rem', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
+        <p className="text-center mb-12" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1.05rem', maxWidth: 560, margin: '0 auto 3rem', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
           Elegante, rápido e baseado em dados de seis faces. Aprenda em minutos, domine em sessões.
         </p>
 
@@ -44,14 +44,14 @@ export default function SistemaSection() {
           {rules.map(({ icon, title, text, href, cta }) => (
             <div key={title} className="rules-card flex flex-col">
               <span style={{ fontSize: '2.2rem', marginBottom: '1rem', display: 'block' }} aria-hidden>{icon}</span>
-              <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1rem', fontWeight: 600, color: 'var(--gold)', marginBottom: '.75rem', letterSpacing: '.05em' }}>
+              <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', fontWeight: 600, color: 'var(--gold)', marginBottom: '.75rem', letterSpacing: '.05em' }}>
                 {title}
               </h3>
-              <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.88rem', lineHeight: 1.8, fontFamily: 'var(--font-im-fell)', flex: 1 }}>
+              <p style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1rem', lineHeight: 1.8, fontFamily: 'var(--font-im-fell)', flex: 1 }}>
                 {text}
               </p>
               <div className="mt-5">
-                <Link href={href} className="hk-btn hk-btn-soul" style={{ fontSize: '.72rem', padding: '.65rem 1.4rem', borderRadius: 6 }}>
+                <Link href={href} className="hk-btn hk-btn-soul" style={{ fontSize: '.82rem', padding: '.65rem 1.4rem', borderRadius: 6 }}>
                   {cta}
                 </Link>
               </div>

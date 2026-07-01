@@ -16,11 +16,11 @@ export default function PartidasSection() {
             >
               ⚔️ Gerenciamento de Partidas
             </h2>
-            <p className="mb-8" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '.95rem', lineHeight: 1.85, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
+            <p className="mb-8" style={{ color: 'rgba(var(--text-rgb),.55)', fontSize: '1.05rem', lineHeight: 1.85, fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
               Organize suas mesas, compartilhe fichas, acompanhe a campanha e desafie seus amigos.
               Ferramentas para jogadores e mestres em um só lugar — da criação do herói até o fim da jornada.
             </p>
-            <Link href="#" className="hk-btn hk-btn-soul" style={{ fontSize: '.8rem', padding: '.85rem 2.2rem', borderRadius: 8 }}>
+            <Link href="#" className="hk-btn hk-btn-soul" style={{ fontSize: '.9rem', padding: '.85rem 2.2rem', borderRadius: 8 }}>
               Explorar Campanhas
             </Link>
           </div>
