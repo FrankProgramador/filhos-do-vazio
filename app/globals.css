@@ -70,6 +70,10 @@
   --font-body:      var(--font-im-fell);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 * {
   box-sizing: border-box;
 }
