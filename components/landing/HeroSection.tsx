@@ -1,14 +1,5 @@
 import Link from 'next/link'
 
-const particles = Array.from({ length: 28 }, (_, i) => ({
-  size: 2 + (i % 4),
-  isGold: i % 3 === 0,
-  left: (i * 7 + 3) % 100,
-  bottom: (i * 13) % 80,
-  duration: 3 + (i % 6),
-  delay: (i * 0.5) % 6,
-}))
-
 export default function HeroSection() {
   return (
     <section
@@ -18,85 +9,105 @@ export default function HeroSection() {
     >
       {/* ── Banner ── */}
       <div
-        className="relative flex justify-center items-center overflow-hidden"
-        style={{ width: '100%', height: 400, background: 'var(--bg)' }}
+        className="relative flex overflow-hidden"
+        style={{ width: '100%', height: 460, background: 'var(--bg)' }}
       >
-        {/* Partículas */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-          {particles.map((p, i) => (
-            <span
-              key={i}
-              className="particle absolute rounded-full"
+        {/* Parallax caverna */}
+        <div className="pl-wrap" aria-hidden>
+          <div className="pl-track pl-sky">
+            {Array.from({ length: 6 }, (_, i) => (
+              <img key={i} src="/img/bases/parallax/Sky.png" alt="" />
+            ))}
+          </div>
+          <div className="pl-track pl-down">
+            {Array.from({ length: 6 }, (_, i) => (
+              <img key={i} src="/img/bases/parallax/DownLayer.png" alt="" />
+            ))}
+          </div>
+          <div className="pl-track pl-mid">
+            {Array.from({ length: 6 }, (_, i) => (
+              <img key={i} src="/img/bases/parallax/MiddleLayer.png" alt="" />
+            ))}
+          </div>
+          <div className="pl-track pl-top">
+            {Array.from({ length: 6 }, (_, i) => (
+              <img key={i} src="/img/bases/parallax/TopLayer.png" alt="" />
+            ))}
+          </div>
+          <div className="pl-light" />
+        </div>
+
+        {/* Conteúdo: desenho à esquerda, texto à direita */}
+        <div
+          className="relative z-10 grid md:grid-cols-[1fr_1.3fr] gap-8 w-full max-w-300 mx-auto px-6"
+          style={{ height: '100%', gridTemplateRows: '100%' }}
+        >
+          {/* Mascote flutuante */}
+          <div className="flex items-center justify-center md:justify-start h-full">
+            <div
+              className="mascot-float"
               style={{
-                width: p.size,
-                height: p.size * 1.4,
-                left: `${p.left}%`,
-                bottom: p.bottom,
-                background: p.isGold
-                  ? `rgba(var(--gold-light-rgb),${0.6 + (i % 3) * 0.1})`
-                  : `rgba(var(--void-glow-rgb),${0.5 + (i % 3) * 0.08})`,
-                boxShadow: p.isGold
-                  ? `0 0 ${p.size * 2}px ${p.size}px rgba(var(--gold-light-rgb),0.4)`
-                  : `0 0 ${p.size * 2}px ${p.size}px rgba(var(--void-glow-rgb),0.35)`,
-                animationDuration: `${p.duration}s`,
-                animationDelay: `${p.delay}s`,
+                filter: 'drop-shadow(0 0 28px rgba(138,204,197,0.22)) drop-shadow(0 8px 32px rgba(0,0,0,0.6))',
               }}
-            />
-          ))}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/img/bases/mascote.png"
+                alt="Mascote — Filhos do Vazio"
+                style={{ height: 320, width: 'auto', display: 'block', transform: 'scaleX(-1)' }}
+              />
+            </div>
+          </div>
+
+          {/* Texto e CTAs */}
+          <div
+            className="flex flex-col items-center justify-center gap-4 text-center h-full"
+            style={{
+              background: 'rgba(0,0,0,0.8)',
+              clipPath: 'polygon(0% 0%, calc(100% - 60px) 0%, 100% 100%, 60px 100%)',
+              margin: 0,
+              padding: '2rem 3.5rem',
+            }}
+          >
+            {/* Ornamento */}
+            <div className="flex items-center gap-4" aria-hidden>
+              <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+              <span style={{ color: 'var(--gold)', fontSize: '.95rem', opacity: .85, textShadow: '0 0 10px rgba(var(--gold-rgb),.7)' }}>◈</span>
+              <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
+            </div>
+
+            <p
+              style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.68rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
+            >
+              Um RPG de mesa inspirado em Hollow Knight
+            </p>
+
+            <h1
+              className="gold-glow"
+              style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 4vw, 4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)' }}
+            >
+              Filhos<br />do Vazio
+            </h1>
+
+            <p
+              style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.95rem, 1.7vw, 1.1rem)', color: 'rgba(var(--text-rgb),.72)', lineHeight: 1.85, maxWidth: 360 }}
+            >
+              Aventuras em um reino decadente de insetos.<br />
+              Forje seu legado nas sombras de Hallownest.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4 pt-2">
+              <Link href="/cadastro" className="btn-hero">✦ Criar Conta</Link>
+              <Link
+                href="#reino"
+                className="hk-btn hk-btn-soul"
+                style={{ fontSize: '.9rem', padding: '.85rem 2.2rem', borderRadius: 8 }}
+              >
+                Explorar o Mundo
+              </Link>
+            </div>
+          </div>
         </div>
-
-        {/* Imagem com máscara de fade nas bordas */}
-        <picture>
-          <source media="(max-width: 768px)" srcSet="/banner2.jpeg" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/banner.jpeg"
-            alt="Arte de capa: Filhos do Vazio — ilustração da minha filha"
-            className="hero-img-mask"
-          />
-        </picture>
-      </div>
-
-      {/* ── Texto abaixo do banner ── */}
-      <div className="flex flex-col items-center gap-4 text-center px-6 pt-10 pb-5 relative z-10">
-        {/* Ornamento */}
-        <div className="flex items-center gap-4" aria-hidden>
-          <div style={{ width: 44, height: 1, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
-          <span style={{ color: 'var(--gold)', fontSize: '.95rem', opacity: .85, textShadow: '0 0 10px rgba(var(--gold-rgb),.7)' }}>◈</span>
-          <div style={{ width: 44, height: 1, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
-        </div>
-
-        <p
-          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '.68rem', letterSpacing: '.38em', textTransform: 'uppercase', color: 'var(--text-muted)' }}
-        >
-          Um RPG de mesa inspirado em Hollow Knight
-        </p>
-
-        <h1
-          className="gold-glow"
-          style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(2rem, 4vw, 4rem)', fontWeight: 900, lineHeight: 1.05, color: 'var(--text)' }}
-        >
-          Filhos<br />do Vazio
-        </h1>
-
-        <p
-          style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: 'clamp(.95rem, 1.7vw, 1.1rem)', color: 'rgba(var(--text-rgb),.72)', lineHeight: 1.85, maxWidth: 360 }}
-        >
-          Aventuras em um reino decadente de insetos.<br />
-          Forje seu legado nas sombras de Hallownest.
-        </p>
-      </div>
-
-      {/* ── CTAs ── */}
-      <div className="flex flex-wrap justify-center gap-4 px-6 pt-5 pb-10">
-        <Link href="/cadastro" className="btn-hero">✦ Criar Conta</Link>
-        <Link
-          href="#reino"
-          className="hk-btn hk-btn-soul"
-          style={{ fontSize: '.9rem', padding: '.85rem 2.2rem', borderRadius: 8 }}
-        >
-          Explorar o Mundo
-        </Link>
       </div>
     </section>
   )

@@ -32,6 +32,14 @@ export default function ReinoSection() {
   return (
     <section id="reino" aria-labelledby="reino-title" style={{ background: 'var(--bg)', padding: '5rem 0' }}>
       <div className="max-w-screen-xl mx-auto px-6">
+        <div className="flex justify-center mb-4" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/img/icons/kishar-icon.png"
+            alt=""
+            style={{ width: 56, height: 56, filter: 'drop-shadow(0 0 12px rgba(var(--gold-rgb),.55))' }}
+          />
+        </div>
         <p className="lnd-label" aria-hidden>Lore &amp; Mundo</p>
         <h2
           id="reino-title"

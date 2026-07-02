@@ -3,6 +3,14 @@
 type Section = { id: string; label: string }
 
 export default function TableOfContents({ sections }: { sections: Section[] }) {
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
+    e.preventDefault()
+    const target = document.getElementById(id)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    history.pushState(null, '', `#${id}`)
+  }
+
   return (
     <nav aria-label="Índice do conteúdo">
       <ol
@@ -19,6 +27,7 @@ export default function TableOfContents({ sections }: { sections: Section[] }) {
           <li key={s.id}>
             <a
               href={`#${s.id}`}
+              onClick={(e) => handleClick(e, s.id)}
               style={{
                 display: 'block',
                 padding: '0.3rem 0.5rem',

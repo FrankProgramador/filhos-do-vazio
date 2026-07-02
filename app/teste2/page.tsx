@@ -143,40 +143,32 @@ const css = `
   }
   .mascot-float { animation: float 3.2s ease-in-out infinite; }
 
-  /* ── Parallax caverna — 3 planos ── */
-  @keyframes caveFar  { from { background-position: 0 0; }       to { background-position: -80px 0; }   }
-  @keyframes caveMid  { from { background-position: 40px 20px; } to { background-position: -100px 20px; } }
-  @keyframes caveNear { from { background-position: 15px 32px; } to { background-position: -45px 32px; } }
-
-  .cave-far {
-    /* metade da densidade original (160×110 em vez de 80×55)
-       + dots roxos e dourados espalhados em posições diferentes */
-    background-image:
-      radial-gradient(circle, rgba(200,155,71,0.28)  1.5px, transparent 1.5px),
-      radial-gradient(circle, rgba(111,90,174,0.38)  1.5px, transparent 1.5px),
-      radial-gradient(circle, rgba(200,155,71,0.20)  1.5px, transparent 1.5px),
-      radial-gradient(circle, rgba(111,90,174,0.28)  1.5px, transparent 1.5px);
-    background-size:
-      160px 110px,
-      240px 175px,
-      200px 150px,
-      300px 220px;
-    background-position:
-      0 0,
-      90px 50px,
-      50px 90px,
-      160px 30px;
-    animation: caveFar 9s linear infinite;
+  /* ── Parallax caverna — camadas de imagem (Sky/Down/Middle/Top/Light) ── */
+  .pl-wrap {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    pointer-events: none;
   }
-  .cave-mid {
-    background-image: radial-gradient(circle, rgba(138,204,197,0.32) 2px, transparent 2px);
-    background-size: 140px 80px;
-    animation: caveMid 5.5s linear infinite;
+  .pl-track {
+    position: absolute; top: 0; left: 0; height: 100%;
+    display: flex; width: max-content;
   }
-  .cave-near {
-    background-image: radial-gradient(circle, rgba(230,232,222,0.18) 2.5px, transparent 2.5px);
-    background-size: 60px 44px;
-    animation: caveNear 2.8s linear infinite;
+  .pl-track img {
+    height: 100%; width: auto; flex-shrink: 0; display: block;
+  }
+  @keyframes plScroll { from { transform: translateX(0); } to { transform: translateX(-16.6667%); } }
+  .pl-sky  { animation: plScroll 140s linear infinite; }
+  .pl-down { animation: plScroll 70s  linear infinite; }
+  .pl-mid  { animation: plScroll 40s  linear infinite; }
+  .pl-top  { animation: plScroll 22s  linear infinite; }
+  .pl-light {
+    position: absolute; inset: 0;
+    background-image: url('/img/bases/parallax/Light.png');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    mix-blend-mode: screen;
+    opacity: 0.5;
   }
 
   /* ── Linhas de velocidade ── */
@@ -311,9 +303,29 @@ export default function Teste2Page() {
           minHeight: 680, display: 'flex', alignItems: 'center',
         }}>
           {/* Parallax caverna */}
-          <div aria-hidden className="cave-far"  style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-          <div aria-hidden className="cave-mid"  style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-          <div aria-hidden className="cave-near" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+          <div aria-hidden className="pl-wrap">
+            <div className="pl-track pl-sky">
+              {Array.from({ length: 6 }, (_, i) => (
+                <img key={i} src="/img/bases/parallax/Sky.png" alt="" />
+              ))}
+            </div>
+            <div className="pl-track pl-down">
+              {Array.from({ length: 6 }, (_, i) => (
+                <img key={i} src="/img/bases/parallax/DownLayer.png" alt="" />
+              ))}
+            </div>
+            <div className="pl-track pl-mid">
+              {Array.from({ length: 6 }, (_, i) => (
+                <img key={i} src="/img/bases/parallax/MiddleLayer.png" alt="" />
+              ))}
+            </div>
+            <div className="pl-track pl-top">
+              {Array.from({ length: 6 }, (_, i) => (
+                <img key={i} src="/img/bases/parallax/TopLayer.png" alt="" />
+              ))}
+            </div>
+            <div className="pl-light" />
+          </div>
 
           {/* Linhas de velocidade */}
           {([

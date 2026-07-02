@@ -196,7 +196,7 @@ export default function ComoJogarPage() {
             <TableOfContents sections={sections} />
           </aside>
 
-          <article style={{ minWidth: 0 }}>
+          <article className="ivory-scroll" style={{ minWidth: 0 }}>
 
             {/* ─── 1. O que é ─────────────────────────── */}
             <SectionTitle id="o-que-e">1. O que é Filhos do Vazio?</SectionTitle>

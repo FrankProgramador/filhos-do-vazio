@@ -1,5 +1,6 @@
 import { apiFetch } from '@/app/lib/api'
 import type { Ability, EquipmentPackage, GameTrait, Item, Size, Trigger, Trilha } from '@/app/lib/gameData'
+import type { Book, BookType, Chapter, ContentStatus, Section, TipTapDoc } from '@/app/lib/bookData'
 
 function authed<T>(path: string, token: string | null, options: RequestInit = {}): Promise<T> {
   return apiFetch<T>(path, options, token)
@@ -109,4 +110,87 @@ export const adminAbilities = {
     authed<Ability>(`/api/admin/abilities/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Livros ───────────────────────────────────────────────────────────────
+
+export type BookPayload = {
+  title: string
+  slug?: string
+  type: BookType
+  description?: string | null
+  cover_image?: string | null
+  version?: string
+  order?: number
+}
+
+export const adminBooks = {
+  list: (token: string | null) => authed<Book[]>('/api/admin/livros', token),
+  create: (token: string | null, data: BookPayload) =>
+    authed<Book>('/api/admin/livros', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: BookPayload) =>
+    authed<Book>(`/api/admin/livros/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/livros/${id}`, token, { method: 'DELETE' }),
+  publish: (token: string | null, id: number) =>
+    authed<Book>(`/api/admin/livros/${id}/publicar`, token, { method: 'POST' }),
+  import: (token: string | null, path?: string, fresh?: boolean) =>
+    authed<{ message: string }>('/api/admin/livros/importar', token, {
+      method: 'POST',
+      body: JSON.stringify({ path, fresh }),
+    }),
+}
+
+// ── Capítulos ────────────────────────────────────────────────────────────
+
+export type ChapterPayload = {
+  title: string
+  slug?: string
+  description?: string | null
+  status?: ContentStatus
+  order?: number
+}
+
+export const adminChapters = {
+  list: (token: string | null, bookId: number) => authed<Chapter[]>(`/api/admin/livros/${bookId}/capitulos`, token),
+  create: (token: string | null, bookId: number, data: ChapterPayload) =>
+    authed<Chapter>(`/api/admin/livros/${bookId}/capitulos`, token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, chapterId: number, data: ChapterPayload) =>
+    authed<Chapter>(`/api/admin/capitulos/${chapterId}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, chapterId: number) =>
+    authed<{ message: string }>(`/api/admin/capitulos/${chapterId}`, token, { method: 'DELETE' }),
+  reorder: (token: string | null, bookId: number, ids: number[]) =>
+    authed<Chapter[]>(`/api/admin/livros/${bookId}/capitulos/reordenar`, token, {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
+}
+
+// ── Seções ───────────────────────────────────────────────────────────────
+
+export type SectionPayload = {
+  title: string
+  slug?: string
+  content?: TipTapDoc | null
+  status?: ContentStatus
+  order?: number
+}
+
+export const adminSections = {
+  list: (token: string | null, bookId: number, chapterId: number) =>
+    authed<Section[]>(`/api/admin/livros/${bookId}/capitulos/${chapterId}/secoes`, token),
+  create: (token: string | null, bookId: number, chapterId: number, data: SectionPayload) =>
+    authed<Section>(`/api/admin/livros/${bookId}/capitulos/${chapterId}/secoes`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (token: string | null, sectionId: number, data: SectionPayload) =>
+    authed<Section>(`/api/admin/secoes/${sectionId}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, sectionId: number) =>
+    authed<{ message: string }>(`/api/admin/secoes/${sectionId}`, token, { method: 'DELETE' }),
+  reorder: (token: string | null, bookId: number, chapterId: number, ids: number[]) =>
+    authed<Section[]>(`/api/admin/livros/${bookId}/capitulos/${chapterId}/secoes/reordenar`, token, {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
 }
