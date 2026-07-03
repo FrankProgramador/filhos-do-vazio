@@ -1387,45 +1387,11 @@ body {
   white-space: pre-wrap;
 }
 
-/* ── Pergaminho de marfim — fundo claro com tinta escura (ex: Como Jogar) ── */
+/* ─── Impressão / PDF: elementos apenas interativos (ex: gatilhos de modal) ── */
 
-.ivory-scroll {
-  position: relative;
-  --bg-secondary: #E3D4AC;
-  --bg-secondary-rgb: 227, 212, 172;
-  --card: #E7D9B4;
-  --card-rgb: 231, 217, 180;
-  --text: #3B2A18;
-  --text-rgb: 59, 42, 24;
-  --text-muted: #6B5638;
-  --text-muted-rgb: 107, 86, 56;
-  --gold: #7A4A1E;
-  --gold-rgb: 122, 74, 30;
-  --gold-light: #93602A;
-  --gold-light-rgb: 147, 96, 42;
-  --gold-bright: #B5793A;
-  --gold-bright-rgb: 181, 121, 58;
-
-  color: var(--text);
-  background:
-    radial-gradient(ellipse at top left, rgba(255, 250, 235, 0.55), transparent 60%),
-    radial-gradient(ellipse at bottom right, rgba(110, 80, 40, 0.2), transparent 55%),
-    repeating-linear-gradient(120deg, rgba(110, 80, 40, 0.035) 0px, rgba(110, 80, 40, 0.035) 2px, transparent 2px, transparent 6px),
-    linear-gradient(180deg, #F2E6C8 0%, #E6D6AC 45%, #EADBB3 100%);
-  border-radius: 6px;
-  padding: clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 5vw, 3.25rem);
-  box-shadow:
-    0 0 0 1px rgba(80, 55, 20, 0.25),
-    0 30px 60px -25px rgba(0, 0, 0, 0.65),
-    inset 0 0 70px rgba(120, 85, 40, 0.22),
-    inset 0 0 140px rgba(80, 55, 20, 0.12);
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
 
-.ivory-scroll::before {
-  content: '';
-  position: absolute;
-  inset: 10px;
-  border: 1px solid rgba(80, 55, 20, 0.18);
-  border-radius: 3px;
-  pointer-events: none;
-}
