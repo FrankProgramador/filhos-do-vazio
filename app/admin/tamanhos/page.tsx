@@ -12,7 +12,7 @@ const ATTR_FIELDS: Array<keyof SizePayload> = [
 ]
 
 const EMPTY: SizePayload = {
-  slug: '', name: '', description: '', image: '',
+  slug: '', name: '', description: '', playable: true, image: '',
   poder: 1, saber: 1, casca: 1, graca: 1, coracao: 1, estamina: 1, alma: 1, velocidade: 1, fofo: 1, assustador: 1,
   sustento_inicial: 0, sustento_maximo: 1, order: 0,
 }
@@ -98,6 +98,16 @@ export default function AdminTamanhosPage() {
             <div className="md:col-span-2">
               <Field label="Descrição"><Textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
             </div>
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2" style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
+                <input
+                  type="checkbox"
+                  checked={form.playable}
+                  onChange={e => setForm({ ...form, playable: e.target.checked })}
+                />
+                Disponível para personagens (desmarque para tamanhos exclusivos de mobs)
+              </label>
+            </div>
           </div>
 
           <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '1.25rem 0 0.6rem' }}>
@@ -133,13 +143,14 @@ export default function AdminTamanhosPage() {
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Carregando...</p>
       ) : (
-        <AdminTable headers={['Nome', 'Slug', 'Sustento', 'Ordem', '']}>
+        <AdminTable headers={['Nome', 'Slug', 'Sustento', 'Ordem', 'Jogável', '']}>
           {sizes.map(size => (
             <Tr key={size.id}>
               <Td>{size.name}</Td>
               <Td>{size.slug}</Td>
               <Td>{size.sustento_maximo}</Td>
               <Td>{size.order ?? '-'}</Td>
+              <Td>{size.playable ? 'Sim' : 'Não'}</Td>
               <Td>
                 <div className="flex items-center gap-2">
                   <button onClick={() => startEdit(size)} className="ddb-badge ddb-badge-gold" style={{ border: 'none', cursor: 'pointer' }}>Editar</button>

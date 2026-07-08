@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function Step3Personality({ traits, personalityTraits, onToggle }: Props) {
-  const pool = traits.filter(t => t.rarity === 'personality')
+  const pool = traits.filter(t => t.tipo === 'personalidade')
   const done = personalityTraits.length >= REQUIRED_PERSONALITY
 
   return (

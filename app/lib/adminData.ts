@@ -1,5 +1,5 @@
 import { apiFetch } from '@/app/lib/api'
-import type { Ability, EquipmentPackage, GameTrait, Item, Size, Trigger, Trilha } from '@/app/lib/gameData'
+import type { Ability, EffectFieldDefinition, EffectType, EquipmentPackage, GameEffect, GameTrait, Item, Size, Tag, Trigger, Trilha } from '@/app/lib/gameData'
 import type { Book, BookType, Chapter, ContentStatus, Section, TipTapDoc } from '@/app/lib/bookData'
 
 function authed<T>(path: string, token: string | null, options: RequestInit = {}): Promise<T> {
@@ -52,8 +52,9 @@ export const adminItems = {
 
 export type TraitModifierPayload = { attribute: string; operation: 'add' | 'subtract' | 'multiply' | 'set'; value: number }
 
-export type TraitPayload = Omit<GameTrait, 'id' | 'modifiers' | 'sub_traits'> & {
+export type TraitPayload = Omit<GameTrait, 'id' | 'modifiers' | 'sub_traits' | 'tags'> & {
   modifiers: TraitModifierPayload[]
+  tag_ids: number[]
 }
 
 export const adminTraits = {
@@ -64,6 +65,21 @@ export const adminTraits = {
     authed<GameTrait>(`/api/admin/traits/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/traits/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Tags ─────────────────────────────────────────────────────────────────
+
+export type TagPayload = Omit<Tag, 'id' | 'slug'> & { slug?: string }
+
+export const adminTags = {
+  list: (token: string | null, group?: string) =>
+    authed<Tag[]>(`/api/admin/tags${group ? `?group=${group}` : ''}`, token),
+  create: (token: string | null, data: TagPayload) =>
+    authed<Tag>('/api/admin/tags', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: TagPayload) =>
+    authed<Tag>(`/api/admin/tags/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/tags/${id}`, token, { method: 'DELETE' }),
 }
 
 // ── Equipment Packages ───────────────────────────────────────────────────
@@ -110,6 +126,42 @@ export const adminAbilities = {
     authed<Ability>(`/api/admin/abilities/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Effect Types ─────────────────────────────────────────────────────────
+
+export type EffectFieldDefinitionPayload = Omit<EffectFieldDefinition, 'effect_type_id' | 'id'> & { id?: number }
+
+export type EffectTypePayload = Omit<EffectType, 'id' | 'field_definitions'> & {
+  field_definitions: EffectFieldDefinitionPayload[]
+}
+
+export const adminEffectTypes = {
+  list: (token: string | null) => authed<EffectType[]>('/api/admin/effect-types', token),
+  create: (token: string | null, data: EffectTypePayload) =>
+    authed<EffectType>('/api/admin/effect-types', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: EffectTypePayload) =>
+    authed<EffectType>(`/api/admin/effect-types/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/effect-types/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Effects ──────────────────────────────────────────────────────────────
+
+export type EffectFieldValuePayload = { effect_field_definition_id: number; value: string | null }
+
+export type EffectPayload = Omit<GameEffect, 'id' | 'effect_type' | 'field_values'> & {
+  field_values: EffectFieldValuePayload[]
+}
+
+export const adminEffects = {
+  list: (token: string | null) => authed<GameEffect[]>('/api/admin/effects', token),
+  create: (token: string | null, data: EffectPayload) =>
+    authed<GameEffect>('/api/admin/effects', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: EffectPayload) =>
+    authed<GameEffect>(`/api/admin/effects/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/effects/${id}`, token, { method: 'DELETE' }),
 }
 
 // ── Livros ───────────────────────────────────────────────────────────────

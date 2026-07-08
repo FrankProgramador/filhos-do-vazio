@@ -3,22 +3,6 @@ import { MAX_TRACOS } from '@/app/lib/gameData'
 import AttributesPanel from './AttributesPanel'
 import ChosenTraitsPanel, { type ChosenTraitEntry } from './ChosenTraitsPanel'
 
-// Traços de atributo (point-buy) — o primeiro de cada grupo é o principal (slug
-// raiz, sem prerequisite_trait_id); os demais são subtraços dele no banco e só
-// aparecem depois que o principal é selecionado. Cada subtraço aplica seu efeito
-// completo, e ele acumula com o do principal (ex: Poderoso +1 Poder, depois
-// Bruto +1 Poder/-1 Fofo = +2 Poder, -1 Fofo no total).
-export const ATTR_TRAIT_SLUGS = [
-  'poderoso', 'bruto', 'encouracado',
-  'gracioso', 'fragil', 'escorregadio', 'refinado',
-  'duradouro', 'lento', 'obtuso',
-  'perspicaz', 'estudioso', 'ansioso',
-  'lindo', 'fraco', 'ingenuo', 'medroso',
-  'ameacador', 'intimidante', 'cicatrizado',
-  'agil', 'leviano', 'nervoso',
-  'saudavel',
-]
-
 interface Props {
   size: Size
   traits: GameTrait[]
@@ -32,8 +16,8 @@ interface Props {
 export default function Step4Attributes({
   size, traits, attrTraits, atributos, totalTracos, onAdd, onRemove,
 }: Props) {
-  const rootTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && t.prerequisite_trait_id === null)
-  const selectedAttrTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && (attrTraits[t.id] ?? 0) > 0)
+  const rootTraits = traits.filter(t => t.tipo === 'atributo' && t.prerequisite_trait_id === null)
+  const selectedAttrTraits = traits.filter(t => t.tipo === 'atributo' && (attrTraits[t.id] ?? 0) > 0)
   const chosenItems: ChosenTraitEntry[] = selectedAttrTraits.map(trait => ({
     id: trait.id,
     name: trait.name,

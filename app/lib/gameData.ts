@@ -27,31 +27,43 @@ export type Size = Atributos & {
   slug: string
   name: string
   description: string | null
+  playable: boolean
   image: string | null
   sustento_inicial: number
   sustento_maximo: number
   order?: number | null
 }
 
-export type TraitCategory = 'body' | 'senses' | 'movement' | 'defense' | 'social' | 'mystic' | 'personality'
+export type TraitTipo = 'personalidade' | 'atributo' | 'especial'
 export type TraitRarity = 'common' | 'remarkable' | 'rare' | 'personality'
+
+export type TagGroup = 'tracos' | 'armas' | 'habilidades' | 'lore'
+
+export type Tag = {
+  id: number
+  name: string
+  slug: string
+  group: TagGroup
+  color: string | null
+  icon: string | null
+  description: string | null
+}
 
 export type GameTrait = {
   id: number
   slug: string
   name: string
-  category: TraitCategory
+  tipo: TraitTipo
   rarity: TraitRarity
   description: string
   mechanical_effect: string | null
   roleplay_obligation: string | null
-  sustento_cost: number
   max_selections: number
-  is_inherent: boolean
   prerequisite_trait_id: number | null
   thumb: string | null
   modifiers: Modifier[]
   sub_traits: GameTrait[]
+  tags: Tag[]
 }
 
 export type Item = {
@@ -106,6 +118,52 @@ export type Trigger = {
   target_type: TriggerTargetType
   area_shape: AreaShape | null
   area_params: Record<string, unknown> | null
+}
+
+export type EffectFieldTypeValue =
+  | 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'multi_select'
+  | 'attribute' | 'resource' | 'condition' | 'dice' | 'expression' | 'entity' | 'effect' | 'target' | 'direction'
+
+export type SelectOption = { label: string; value: string }
+
+export type EffectFieldDefinition = {
+  id: number
+  effect_type_id: number
+  name: string
+  label: string
+  description: string | null
+  field_type: EffectFieldTypeValue
+  is_required: boolean
+  default_value: string | null
+  min_value: number | null
+  max_value: number | null
+  options: SelectOption[] | null
+  sort_order: number
+}
+
+export type EffectType = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  field_definitions: EffectFieldDefinition[]
+}
+
+export type EffectFieldValue = {
+  id: number
+  effect_id: number
+  effect_field_definition_id: number
+  value: string | null
+}
+
+export type GameEffect = {
+  id: number
+  effect_type_id: number
+  name: string
+  slug: string
+  description: string | null
+  effect_type: EffectType
+  field_values: EffectFieldValue[]
 }
 
 export type AbilityType = 'active' | 'passive' | 'reaction'
@@ -187,6 +245,10 @@ export function fetchSizes(): Promise<Size[]> {
 
 export function fetchTraits(): Promise<GameTrait[]> {
   return apiFetch<GameTrait[]>('/api/traits')
+}
+
+export function fetchTags(group?: TagGroup): Promise<Tag[]> {
+  return apiFetch<Tag[]>(`/api/tags${group ? `?group=${group}` : ''}`)
 }
 
 export function fetchItems(): Promise<Item[]> {

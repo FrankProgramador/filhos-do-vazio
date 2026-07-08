@@ -9,11 +9,14 @@ const navItems = [
   { href: '/admin', label: 'Visão Geral' },
   { href: '/admin/tamanhos', label: 'Tamanhos' },
   { href: '/admin/tracos', label: 'Traços' },
+  { href: '/admin/tags', label: 'Tags' },
   { href: '/admin/itens', label: 'Itens' },
   { href: '/admin/pacotes', label: 'Pacotes de Equipamento' },
   { href: '/admin/trilhas', label: 'Trilhas' },
   { href: '/admin/habilidades', label: 'Habilidades' },
   { href: '/admin/gatilhos', label: 'Gatilhos' },
+  { href: '/admin/tipos-de-efeito', label: 'Tipos de Efeito' },
+  { href: '/admin/efeitos', label: 'Efeitos' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

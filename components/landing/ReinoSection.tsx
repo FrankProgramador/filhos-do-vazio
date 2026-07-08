@@ -81,7 +81,7 @@ export default function ReinoSection() {
           className="text-center section-heading-glow"
           style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 700, color: 'var(--text)' }}
         >
-          Crosta Eterna
+          Verme Cinzento
         </h2>
         </div>
 
@@ -138,14 +138,14 @@ export default function ReinoSection() {
           <img
             ref={imgRef}
             className="crosta-img"
-            src="/img/crosta-eterna.png"
-            alt="Vista panorâmica da Crosta Eterna — um reino construído sobre a carapaça de um colosso"
+            src="/img/verme-de-pedra.jpeg"
+            alt="O Verme Cinzento — colosso ancestral sobre cuja carapaça o reino foi construído"
           />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(10,12,18,.45) 0%, transparent 18%, transparent 82%, rgba(10,12,18,.45) 100%)', pointerEvents: 'none' }} aria-hidden />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 55%, var(--bg) 100%)', pointerEvents: 'none' }} aria-hidden />
 
           <div className="comic-box comic-box-1">
-            <p>A Crosta Eterna é um reino construído sobre a carapaça de um colosso ancestral.</p>
+            <p>O Verme Cinzento é um colosso ancestral, adormecido há eras — e o reino se ergueu sobre sua carapaça.</p>
           </div>
           <div className="comic-box comic-box-2">
             <p>No topo repousa a capital. Vilarejos se agarram às placas de quitina como musgo sobre uma pedra.</p>

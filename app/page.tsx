@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
 import HeroSection from '@/components/landing/HeroSection'
-import ReinoSection from '@/components/landing/ReinoSection'
+import PrologoSection from '@/components/landing/PrologoSection'
+import EcosDaCrostaSection from '@/components/landing/EcosDaCrostaSection'
+// import ReinoSection from '@/components/landing/ReinoSection'
 import SistemaSection from '@/components/landing/SistemaSection'
 
 export const metadata: Metadata = {
@@ -16,7 +18,9 @@ export default function Home() {
       <SiteHeader activePath="/" />
       <main>
         <HeroSection />
-        <ReinoSection />
+        <PrologoSection />
+        <EcosDaCrostaSection />
+        {/* <ReinoSection /> */}
         <SistemaSection />
       </main>
       <SiteFooter />

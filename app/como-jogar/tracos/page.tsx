@@ -3,12 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import ContentShell from '@/components/ContentShell'
-import { fetchTraits, type GameTrait, type TraitCategory, type TraitRarity } from '@/app/lib/gameData'
-
-const CATEGORY_LABELS: Record<TraitCategory, string> = {
-  body: 'Corporais', senses: 'Sentidos', movement: 'Movimento', defense: 'Defesa',
-  social: 'Social', mystic: 'Místicos', personality: 'Personalidade',
-}
+import { fetchTags, fetchTraits, type GameTrait, type Tag, type TraitRarity } from '@/app/lib/gameData'
 
 const RARITY_LABELS: Record<TraitRarity, string> = {
   common: 'Comum', remarkable: 'Marcante', rare: 'Raro', personality: 'Personalidade',
@@ -23,22 +18,24 @@ const RARITY_BADGE_CLASS: Record<TraitRarity, string> = {
 
 export default function TracosPage() {
   const [traits, setTraits] = useState<GameTrait[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<TraitCategory | 'all'>('all')
+  const [tagId, setTagId] = useState<number | 'all'>('all')
   const [rarity, setRarity] = useState<TraitRarity | 'all'>('all')
 
   useEffect(() => {
+    fetchTags('tracos').then(setTags)
     fetchTraits().then(setTraits).finally(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {
     return traits.filter(t =>
-      (category === 'all' || t.category === category) &&
+      (tagId === 'all' || t.tags.some(tag => tag.id === tagId)) &&
       (rarity === 'all' || t.rarity === rarity) &&
       (search.trim() === '' || t.name.toLowerCase().includes(search.trim().toLowerCase()))
     )
-  }, [traits, category, rarity, search])
+  }, [traits, tagId, rarity, search])
 
   return (
     <ContentShell title="Traços">
@@ -68,14 +65,14 @@ export default function TracosPage() {
               style={{ flex: 1, padding: '0.65rem 1rem', borderRadius: 6, color: 'var(--text)' }}
             />
             <select
-              value={category}
-              onChange={e => setCategory(e.target.value as TraitCategory | 'all')}
+              value={tagId}
+              onChange={e => setTagId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
               className="ddb-search"
               style={{ padding: '0.65rem 1rem', borderRadius: 6, color: 'var(--text)' }}
             >
               <option value="all">Todas as categorias</option>
-              {(Object.keys(CATEGORY_LABELS) as TraitCategory[]).map(c => (
-                <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+              {tags.map(tag => (
+                <option key={tag.id} value={tag.id}>{tag.icon} {tag.name}</option>
               ))}
             </select>
             <select
@@ -102,7 +99,9 @@ export default function TracosPage() {
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>{trait.name}</span>
                     <span className={RARITY_BADGE_CLASS[trait.rarity]} style={{ fontSize: '0.46rem' }}>{RARITY_LABELS[trait.rarity]}</span>
-                    <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.44rem' }}>{CATEGORY_LABELS[trait.category]}</span>
+                    {trait.tags.map(tag => (
+                      <span key={tag.id} className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.44rem' }}>{tag.icon} {tag.name}</span>
+                    ))}
                     {trait.max_selections > 1 && (
                       <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.44rem' }}>máx {trait.max_selections}×</span>
                     )}

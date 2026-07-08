@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/lib/auth-context'
 import { ApiError } from '@/app/lib/api'
-import { adminTraits, type TraitModifierPayload, type TraitPayload } from '@/app/lib/adminData'
-import type { GameTrait, TraitCategory, TraitRarity } from '@/app/lib/gameData'
+import { adminTags, adminTraits, type TraitModifierPayload, type TraitPayload } from '@/app/lib/adminData'
+import type { GameTrait, Tag, TraitRarity, TraitTipo } from '@/app/lib/gameData'
 import { AdminTable, ConfirmButton, Field, Input, Select, Td, Textarea, Tr } from '../AdminUI'
 
-const CATEGORIES: TraitCategory[] = ['body', 'senses', 'movement', 'defense', 'social', 'mystic', 'personality']
-const CATEGORY_LABELS: Record<TraitCategory, string> = {
-  body: 'Corporais', senses: 'Sentidos', movement: 'Movimento', defense: 'Defesa', social: 'Social', mystic: 'Místicos', personality: 'Personalidade',
-}
+const TIPOS: TraitTipo[] = ['personalidade', 'atributo', 'especial']
+const TIPO_LABELS: Record<TraitTipo, string> = { personalidade: 'Personalidade', atributo: 'Atributo', especial: 'Especial' }
+
 const RARITIES: TraitRarity[] = ['common', 'remarkable', 'rare', 'personality']
 const RARITY_LABELS: Record<TraitRarity, string> = { common: 'Comum', remarkable: 'Marcante', rare: 'Raro', personality: 'Personalidade' }
 
@@ -18,21 +17,25 @@ const ATTRS = ['poder', 'saber', 'casca', 'graca', 'coracao', 'estamina', 'alma'
 const OPERATIONS: TraitModifierPayload['operation'][] = ['add', 'subtract', 'multiply', 'set']
 
 const EMPTY: TraitPayload = {
-  slug: '', name: '', category: 'body', rarity: 'common', description: '', mechanical_effect: '',
-  roleplay_obligation: '', sustento_cost: 0, max_selections: 1, is_inherent: false, prerequisite_trait_id: null,
-  thumb: '', modifiers: [],
+  slug: '', name: '', tipo: 'especial', rarity: 'common', description: '', mechanical_effect: '',
+  roleplay_obligation: '', max_selections: 1, prerequisite_trait_id: null,
+  thumb: '', modifiers: [], tag_ids: [],
 }
 
 export default function AdminTracosPage() {
   const { token } = useAuth()
   const [traits, setTraits] = useState<GameTrait[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<TraitPayload>(EMPTY)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const load = () => adminTraits.list(token).then(setTraits).finally(() => setLoading(false))
+  const load = () => {
+    adminTags.list(token, 'tracos').then(setTags)
+    return adminTraits.list(token).then(setTraits).finally(() => setLoading(false))
+  }
   useEffect(() => { load() }, [token])
 
   function startCreate() { setEditingId(0); setForm(EMPTY); setError(null) }
@@ -41,6 +44,7 @@ export default function AdminTracosPage() {
     setForm({
       ...trait,
       modifiers: trait.modifiers.map(m => ({ attribute: m.attribute, operation: m.operation, value: Number(m.value) })),
+      tag_ids: trait.tags.map(t => t.id),
     })
     setError(null)
   }
@@ -54,6 +58,13 @@ export default function AdminTracosPage() {
   }
   function removeModifier(i: number) {
     setForm({ ...form, modifiers: form.modifiers.filter((_, idx) => idx !== i) })
+  }
+
+  function toggleTag(tagId: number) {
+    setForm({
+      ...form,
+      tag_ids: form.tag_ids.includes(tagId) ? form.tag_ids.filter(id => id !== tagId) : [...form.tag_ids, tagId],
+    })
   }
 
   async function save() {
@@ -97,9 +108,9 @@ export default function AdminTracosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Slug" required><Input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} /></Field>
             <Field label="Nome" required><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="Categoria" required>
-              <Select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as TraitCategory })}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+            <Field label="Tipo" required>
+              <Select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value as TraitTipo })}>
+                {TIPOS.map(t => <option key={t} value={t}>{TIPO_LABELS[t]}</option>)}
               </Select>
             </Field>
             <Field label="Raridade" required>
@@ -117,17 +128,39 @@ export default function AdminTracosPage() {
                 {traits.filter(t => t.id !== editingId).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </Select>
             </Field>
+            <Field label="Thumb (caminho/URL da imagem)"><Input value={form.thumb ?? ''} onChange={e => setForm({ ...form, thumb: e.target.value })} /></Field>
             <div className="md:col-span-2">
               <Field label="Descrição" required><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
             </div>
             <div className="md:col-span-2">
               <Field label="Efeito mecânico"><Textarea value={form.mechanical_effect ?? ''} onChange={e => setForm({ ...form, mechanical_effect: e.target.value })} /></Field>
             </div>
-            {form.rarity === 'personality' && (
+            {form.tipo === 'personalidade' && (
               <div className="md:col-span-2">
                 <Field label="Obrigação de interpretação" required><Textarea value={form.roleplay_obligation ?? ''} onChange={e => setForm({ ...form, roleplay_obligation: e.target.value })} /></Field>
               </div>
             )}
+            <div className="md:col-span-2">
+              <Field label="Tags">
+                <div className="flex flex-wrap gap-2">
+                  {tags.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nenhuma tag do grupo &quot;traços&quot; ainda — crie em Admin → Tags.</span>}
+                  {tags.map(tag => {
+                    const active = form.tag_ids.includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={active ? 'ddb-badge ddb-badge-gold' : 'ddb-badge ddb-badge-dim'}
+                        style={{ border: 'none', cursor: 'pointer' }}
+                      >
+                        {tag.icon} {tag.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+            </div>
           </div>
 
           <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '1.25rem 0 0.6rem' }}>
@@ -157,12 +190,13 @@ export default function AdminTracosPage() {
       )}
 
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Carregando...</p> : (
-        <AdminTable headers={['Nome', 'Categoria', 'Raridade', 'Pré-requisito', '']}>
+        <AdminTable headers={['Nome', 'Tipo', 'Raridade', 'Tags', 'Pré-requisito', '']}>
           {traits.map(trait => (
             <Tr key={trait.id}>
               <Td>{trait.name}</Td>
-              <Td>{CATEGORY_LABELS[trait.category]}</Td>
+              <Td>{TIPO_LABELS[trait.tipo]}</Td>
               <Td>{RARITY_LABELS[trait.rarity]}</Td>
+              <Td>{trait.tags.map(t => t.name).join(', ') || '-'}</Td>
               <Td>{trait.prerequisite_trait_id ? traits.find(t => t.id === trait.prerequisite_trait_id)?.name ?? '-' : '-'}</Td>
               <Td>
                 <div className="flex items-center gap-2">

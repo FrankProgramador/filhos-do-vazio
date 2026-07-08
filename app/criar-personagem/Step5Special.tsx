@@ -1,21 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { Atributos, GameTrait, Size, TraitCategory, TraitRarity } from '@/app/lib/gameData'
+import type { Atributos, GameTrait, Size, TraitRarity } from '@/app/lib/gameData'
 import { MAX_RARE, MAX_REMARKABLE, MAX_TRACOS } from '@/app/lib/gameData'
 import AttributesPanel from './AttributesPanel'
 import ChosenTraitsPanel, { type ChosenTraitEntry } from './ChosenTraitsPanel'
-import { ATTR_TRAIT_SLUGS } from './Step4Attributes'
-
-const CATEGORY_LABELS: Record<TraitCategory, string> = {
-  body: 'Corporais',
-  senses: 'Sentidos',
-  movement: 'Movimento',
-  defense: 'Defesa',
-  social: 'Social',
-  mystic: 'Místicos',
-  personality: 'Personalidade',
-}
 
 const RARITY_LABELS: Record<TraitRarity, string> = {
   common: 'Comum',
@@ -54,22 +43,21 @@ export default function Step5Special({
   size, traits, atributos, attrTraits, specialTraits, subTraits, totalTracos,
   onRemoveAttr, onToggleSpecial, onToggleSub,
 }: Props) {
-  const pool = traits.filter(t =>
-    t.rarity !== 'personality' &&
-    t.prerequisite_trait_id === null &&
-    !ATTR_TRAIT_SLUGS.includes(t.slug)
-  )
+  const pool = traits.filter(t => t.tipo === 'especial' && t.prerequisite_trait_id === null)
 
-  const categories = Array.from(new Set(pool.map(t => t.category))) as TraitCategory[]
-  const [activeCategory, setActiveCategory] = useState<TraitCategory>(categories[0])
+  const tagsInPool = Array.from(new Map(pool.flatMap(t => t.tags).map(tag => [tag.id, tag])).values())
+  const [activeTagId, setActiveTagId] = useState<number | null>(tagsInPool[0]?.id ?? null)
   const [rarityFilter, setRarityFilter] = useState<TraitRarity | 'all'>('all')
 
   const countByRarity = (rarity: TraitRarity) =>
     [...specialTraits, ...subTraits].filter(id => traits.find(t => t.id === id)?.rarity === rarity).length
 
-  const visible = pool.filter(t => t.category === activeCategory && (rarityFilter === 'all' || t.rarity === rarityFilter))
+  const visible = pool.filter(t =>
+    (activeTagId === null || t.tags.some(tag => tag.id === activeTagId)) &&
+    (rarityFilter === 'all' || t.rarity === rarityFilter)
+  )
 
-  const chosenAttrTraits = traits.filter(t => ATTR_TRAIT_SLUGS.includes(t.slug) && (attrTraits[t.id] ?? 0) > 0)
+  const chosenAttrTraits = traits.filter(t => t.tipo === 'atributo' && (attrTraits[t.id] ?? 0) > 0)
   const chosenSpecialTraits = [...specialTraits, ...subTraits]
     .map(id => traits.find(t => t.id === id))
     .filter((t): t is GameTrait => !!t)
@@ -142,12 +130,12 @@ export default function Step5Special({
       {/* Abas de tipo + filtro de raridade */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          {categories.map(cat => {
-            const isActive = activeCategory === cat
+          {tagsInPool.map(tag => {
+            const isActive = activeTagId === tag.id
             return (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
+                key={tag.id}
+                onClick={() => setActiveTagId(tag.id)}
                 style={{
                   fontFamily: 'var(--font-cinzel)',
                   fontSize: '0.6rem',
@@ -161,7 +149,7 @@ export default function Step5Special({
                   cursor: 'pointer',
                 }}
               >
-                {CATEGORY_LABELS[cat]}
+                {tag.icon} {tag.name}
               </button>
             )
           })}
