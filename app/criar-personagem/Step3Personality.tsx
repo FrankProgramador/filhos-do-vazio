@@ -1,5 +1,8 @@
+import { useMemo, useState } from 'react'
 import type { GameTrait } from '@/app/lib/gameData'
 import { REQUIRED_PERSONALITY } from '@/app/lib/gameData'
+
+const FILTER_TAG_ORDER = ['protecao', 'obsessao', 'cautela', 'impulso', 'troca']
 
 interface Props {
   traits: GameTrait[]
@@ -8,8 +11,28 @@ interface Props {
 }
 
 export default function Step3Personality({ traits, personalityTraits, onToggle }: Props) {
+  const [activeTagIds, setActiveTagIds] = useState<number[]>([])
+
   const pool = traits.filter(t => t.tipo === 'personalidade')
   const done = personalityTraits.length >= REQUIRED_PERSONALITY
+
+  const filterTags = useMemo(() => {
+    const byId = new Map<number, GameTrait['tags'][number]>()
+    for (const trait of pool) {
+      for (const tag of trait.tags) {
+        if (FILTER_TAG_ORDER.includes(tag.slug)) byId.set(tag.id, tag)
+      }
+    }
+    return [...byId.values()].sort((a, b) => FILTER_TAG_ORDER.indexOf(a.slug) - FILTER_TAG_ORDER.indexOf(b.slug))
+  }, [pool])
+
+  function toggleFilterTag(tagId: number) {
+    setActiveTagIds(ids => ids.includes(tagId) ? ids.filter(id => id !== tagId) : [...ids, tagId])
+  }
+
+  const visiblePool = activeTagIds.length === 0
+    ? pool
+    : pool.filter(trait => trait.tags.some(tag => activeTagIds.includes(tag.id)))
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,8 +54,25 @@ export default function Step3Personality({ traits, personalityTraits, onToggle }
         </span>
       </div>
 
+      {filterTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {filterTags.map(tag => (
+            <button
+              key={tag.id}
+              type="button"
+              onClick={() => toggleFilterTag(tag.id)}
+              className={activeTagIds.includes(tag.id) ? 'ddb-badge ddb-badge-gold' : 'ddb-badge ddb-badge-dim'}
+              style={{ border: 'none', cursor: 'pointer' }}
+              title={tag.description ?? undefined}
+            >
+              {tag.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {pool.map(trait => {
+        {visiblePool.map(trait => {
           const isSelected = personalityTraits.includes(trait.id)
           const blocked = !isSelected && done
           return (

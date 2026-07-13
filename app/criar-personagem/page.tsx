@@ -9,7 +9,7 @@ import { apiFetch, ApiError } from '@/app/lib/api'
 import {
   fetchSizes, fetchTraits, fetchItems, fetchEquipmentPackages, fetchTrilhas,
   calculateAttributes, countCappedTraits, sustentoNecessario,
-  MAX_TRACOS, REQUIRED_PERSONALITY,
+  MAX_TRACOS, MAX_ATTR_TRAITS, REQUIRED_PERSONALITY,
   type CharSheet, type Size, type GameTrait, type Item, type EquipmentPackage, type Trilha, type SelectedTrait,
 } from '@/app/lib/gameData'
 import Step1Info from './Step1Info'
@@ -24,16 +24,6 @@ import Summary from './Summary'
 const STORAGE_KEY = 'fdv_criar_personagem_draft'
 
 const STEP_LABELS = ['Informações', 'Tamanho', 'Personalidade', 'Atributos', 'Traços', 'Trilha', 'Equipamento']
-const STEP_TITLES = [
-  'Informações Básicas',
-  'Escolha o Tamanho',
-  'Traços de Personalidade',
-  'Distribua Traços de Atributo',
-  'Traços Especiais',
-  'Escolha sua Trilha',
-  'Equipamento Inicial',
-  'Resumo do Personagem',
-]
 const TOTAL_STEPS = 7
 
 const INIT_SHEET: CharSheet = {
@@ -119,9 +109,14 @@ export default function CriarPersonagem() {
   const atributos = useMemo(() => (size ? calculateAttributes(size, selectedTraits) : null), [size, selectedTraits])
   const sustento = size ? sustentoNecessario(size) : 0
 
-  // Traços de personalidade não entram no limite de traços comuns/marcantes/raros.
+  // Traços de personalidade não entram no limite de traços comuns/marcantes/raros; traços
+  // de atributo têm orçamento próprio (MAX_ATTR_TRAITS) e não competem com os especiais.
   const totalTracos = useMemo(
-    () => countCappedTraits(selectedTraits.filter(s => s.trait.rarity !== 'personality')),
+    () => countCappedTraits(selectedTraits.filter(s => s.trait.rarity !== 'personality' && s.trait.tipo !== 'atributo')),
+    [selectedTraits]
+  )
+  const totalAttrTraits = useMemo(
+    () => countCappedTraits(selectedTraits.filter(s => s.trait.tipo === 'atributo')),
     [selectedTraits]
   )
 
@@ -135,7 +130,7 @@ export default function CriarPersonagem() {
     if (!trait) return
     if (trait.prerequisite_trait_id && !(sheet.attrTraits[trait.prerequisite_trait_id] > 0)) return
     const curr = sheet.attrTraits[id] ?? 0
-    if (curr >= trait.max_selections || totalTracos >= MAX_TRACOS) return
+    if (curr >= trait.max_selections || totalAttrTraits >= MAX_ATTR_TRAITS) return
     setSheet(s => ({ ...s, attrTraits: { ...s.attrTraits, [id]: curr + 1 } }))
   }
 
@@ -298,52 +293,13 @@ export default function CriarPersonagem() {
 
       <div style={{ paddingTop: 44, background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(var(--gold-rgb),0.08)' }}>
         <div className="max-w-4xl mx-auto px-6 py-8">
-          <nav className="flex items-center gap-2 mb-5" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          <nav className="flex items-center gap-2" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             <Link href="/" style={{ color: 'var(--gold)' }} className="transition-opacity hover:opacity-75">← Início</Link>
             <span style={{ color: 'rgba(var(--gold-rgb),0.3)' }} aria-hidden>◈</span>
-            <span style={{ color: 'rgba(var(--text-rgb),0.38)' }}>Criação de Personagem</span>
+            <span style={{ color: 'rgba(var(--text-rgb),0.38)' }}>
+              Criação de Personagem{step <= TOTAL_STEPS ? ` - ${STEP_LABELS[step - 1]}` : ' - Resumo'}
+            </span>
           </nav>
-
-          <h1 style={{ fontFamily: 'var(--font-cinzel)', fontSize: 'clamp(1.15rem, 3vw, 1.8rem)', fontWeight: 700, color: 'var(--text)', marginBottom: step <= TOTAL_STEPS ? '2rem' : 0 }}>
-            🦋 {STEP_TITLES[step - 1]}
-          </h1>
-
-          {step <= TOTAL_STEPS && (
-            <>
-              <div className="flex items-center" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem 0' }}>
-                {STEP_LABELS.map((label, i) => {
-                  const n = (i + 1) as typeof step
-                  const isDone = n < step
-                  const isActive = n === step
-                  const stateClass = isDone ? 'step-indicator--done' : isActive ? 'step-indicator--active' : 'step-indicator--pending'
-                  return (
-                    <div key={n} className="flex items-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className={`step-indicator ${stateClass}`} style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cinzel)', fontSize: '0.64rem', fontWeight: 700, transition: 'all 0.2s' }}>
-                          {isDone ? '✓' : n}
-                        </div>
-                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.45rem', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap', transition: 'color 0.2s', color: isActive || isDone ? 'var(--gold)' : 'rgba(var(--text-muted-rgb),0.6)' }}>
-                          {label}
-                        </span>
-                      </div>
-                      {i < STEP_LABELS.length - 1 && (
-                        <div className={`step-connector ${isDone ? 'step-connector--done' : ''}`} style={{ width: 28, height: 1, margin: '0 4px', marginBottom: 16, transition: 'background 0.2s' }} />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Resumo persistente de recursos — visível em todos os passos, não só onde são escolhidos */}
-              {size && (
-                <div className="flex items-center gap-4 flex-wrap" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                  <span>Sustento: <strong style={{ color: 'var(--text)' }}>{sustento} ração(ões)</strong></span>
-                  <span>Traços: <strong style={{ color: totalTracos >= MAX_TRACOS ? 'var(--error)' : 'var(--text)' }}>{totalTracos}/{MAX_TRACOS}</strong></span>
-                  <span>Personalidade: <strong style={{ color: sheet.personalityTraits.length === REQUIRED_PERSONALITY ? 'var(--text)' : 'var(--warning)' }}>{sheet.personalityTraits.length}/{REQUIRED_PERSONALITY}</strong></span>
-                </div>
-              )}
-            </>
-          )}
         </div>
       </div>
 
@@ -372,7 +328,7 @@ export default function CriarPersonagem() {
             traits={traits}
             attrTraits={sheet.attrTraits}
             atributos={atributos}
-            totalTracos={totalTracos}
+            totalAttrTraits={totalAttrTraits}
             onAdd={addAttrTrait}
             onRemove={removeAttrTrait}
           />
@@ -438,9 +394,30 @@ export default function CriarPersonagem() {
             ← Voltar
           </button>
 
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.52rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            {step <= TOTAL_STEPS ? `Etapa ${step} de ${TOTAL_STEPS}` : 'Resumo'}
-          </span>
+          {step <= TOTAL_STEPS ? (
+            <div className="flex items-center" style={{ flexWrap: 'wrap', gap: '0.25rem 0' }}>
+              {STEP_LABELS.map((label, i) => {
+                const n = (i + 1) as typeof step
+                const isDone = n < step
+                const isActive = n === step
+                const stateClass = isDone ? 'step-indicator--done' : isActive ? 'step-indicator--active' : 'step-indicator--pending'
+                return (
+                  <div key={n} className="flex items-center">
+                    <div className={`step-indicator ${stateClass}`} title={label} style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cinzel)', fontSize: '0.56rem', fontWeight: 700, transition: 'all 0.2s' }}>
+                      {isDone ? '✓' : n}
+                    </div>
+                    {i < STEP_LABELS.length - 1 && (
+                      <div className={`step-connector ${isDone ? 'step-connector--done' : ''}`} style={{ width: 18, height: 1, margin: '0 3px', transition: 'background 0.2s' }} />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.52rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              Resumo
+            </span>
+          )}
 
           {step <= TOTAL_STEPS ? (
             <button

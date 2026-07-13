@@ -6,10 +6,9 @@ const ATTR_LABELS: Array<[keyof Size, string]> = [
   ['casca', 'Casca'],
   ['graca', 'Graça'],
   ['coracao', 'Coração'],
-  ['estamina', 'Estamina'],
-  ['alma', 'Alma'],
-  ['velocidade', 'Velocidade'],
   ['sustento_maximo', 'Sustento Necessário'],
+  ['fofo', 'Fofo'],
+  ['assustador', 'Assustador'],
 ]
 
 const SIZE_TOOLTIPS: Record<string, string> = {
@@ -25,6 +24,18 @@ interface Props {
 }
 
 export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
+  const selectedSize = sizes.find(s => s.id === selectedId) ?? null
+  const baseSize = sizes.find(s => s.slug === 'medio') ?? null
+
+  function attrColor(key: keyof Size): string {
+    if (!selectedSize || !baseSize) return 'var(--gold)'
+    const value = Number(selectedSize[key])
+    const base = Number(baseSize[key])
+    if (value < base) return 'var(--error)'
+    if (value > base) return 'var(--success)'
+    return 'var(--gold)'
+  }
+
   return (
     <div>
       <p style={{
@@ -39,7 +50,7 @@ export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
         fundação — tudo o mais modifica a partir daqui.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {sizes.map(size => {
           const isSelected = selectedId === size.id
           return (
@@ -76,13 +87,13 @@ export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
                 }} />
               </div>
 
-              <div style={{ padding: '1rem 1.25rem 1.5rem' }}>
+              <div style={{ padding: '0.75rem 0.9rem 1rem' }}>
                 <h2 style={{
                   fontFamily: 'var(--font-cinzel)',
-                  fontSize: '1rem',
+                  fontSize: '0.88rem',
                   fontWeight: 700,
                   color: isSelected ? 'var(--gold)' : 'var(--text)',
-                  marginBottom: '0.4rem',
+                  marginBottom: '0.35rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.4rem',
@@ -141,53 +152,19 @@ export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
                 <p style={{
                   fontFamily: 'var(--font-im-fell)',
                   fontStyle: 'italic',
-                  fontSize: '0.85rem',
+                  fontSize: '0.78rem',
                   color: 'rgba(var(--text-rgb),0.5)',
-                  marginBottom: '1rem',
-                  lineHeight: 1.6,
+                  lineHeight: 1.5,
                 }}>
                   {size.description}
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem' }}>
-                  {ATTR_LABELS.map(([key, label]) => (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between"
-                      style={{
-                        background: 'rgba(var(--gold-rgb),0.04)',
-                        border: '1px solid rgba(var(--gold-rgb),0.09)',
-                        borderRadius: 4,
-                        padding: '0.25rem 0.5rem',
-                      }}
-                    >
-                      <span style={{
-                        fontFamily: 'var(--font-cinzel)',
-                        fontSize: '0.48rem',
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: 'var(--text-muted)',
-                      }}>
-                        {label}
-                      </span>
-                      <span style={{
-                        fontFamily: 'var(--font-cinzel)',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        color: isSelected ? 'var(--gold)' : 'var(--text)',
-                      }}>
-                        {String(size[key])}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
                 {isSelected && (
                   <div style={{
-                    marginTop: '1rem',
+                    marginTop: '0.75rem',
                     textAlign: 'center',
                     fontFamily: 'var(--font-cinzel)',
-                    fontSize: '0.58rem',
+                    fontSize: '0.55rem',
                     letterSpacing: '0.2em',
                     textTransform: 'uppercase',
                     color: 'var(--gold)',
@@ -199,6 +176,69 @@ export default function Step2Base({ sizes, selectedId, onSelect }: Props) {
             </button>
           )
         })}
+
+        <div
+          className="card"
+          style={{ background: 'var(--card)', borderRadius: 12, padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column' }}
+        >
+          <h2 style={{
+            fontFamily: 'var(--font-cinzel)',
+            fontSize: '0.7rem',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--gold)',
+            marginBottom: '0.75rem',
+          }}>
+            Atributos
+          </h2>
+
+          {selectedSize ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {ATTR_LABELS.map(([key, label]) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between"
+                  style={{
+                    background: 'rgba(var(--gold-rgb),0.04)',
+                    border: '1px solid rgba(var(--gold-rgb),0.09)',
+                    borderRadius: 4,
+                    padding: '0.25rem 0.5rem',
+                  }}
+                >
+                  <span style={{
+                    fontFamily: 'var(--font-cinzel)',
+                    fontSize: '0.48rem',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                  }}>
+                    {label}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-cinzel)',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    color: attrColor(key),
+                  }}>
+                    {String(selectedSize[key])}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{
+              fontFamily: 'var(--font-im-fell)',
+              fontStyle: 'italic',
+              fontSize: '0.8rem',
+              color: 'var(--text-muted)',
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+            }}>
+              Selecione um tamanho para ver seus atributos.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

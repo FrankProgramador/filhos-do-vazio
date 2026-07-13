@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/app/lib/auth-context'
 import { apiUpload, ApiError } from '@/app/lib/api'
 
@@ -47,6 +47,81 @@ const labelStyle = {
   marginBottom: '0.5rem',
 }
 
+function AvatarPickerModal({ open, avatar, onClose, onSelectPreset }: {
+  open: boolean
+  avatar: string | null
+  onClose: () => void
+  onSelectPreset: (url: string) => void
+}) {
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Selecionar Avatar"
+      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+    >
+      <div
+        onClick={onClose}
+        aria-hidden
+        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(2px)' }}
+      />
+      <div
+        style={{
+          position: 'relative', background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.25)',
+          borderRadius: 10, maxWidth: 420, width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 30px 70px -20px rgba(0,0,0,0.7)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.1rem 1.4rem', borderBottom: '1px solid rgba(var(--gold-rgb),0.15)' }}>
+          <h3 style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.15rem', color: 'var(--gold)', margin: 0 }}>Selecionar Avatar</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1, padding: 0 }}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ padding: '1.25rem 1.4rem', overflowY: 'auto' }}>
+          <div className="flex gap-3 flex-wrap">
+            {AVATAR_PRESETS.map(preset => (
+              <button
+                key={preset}
+                onClick={() => onSelectPreset(preset)}
+                className={avatar === preset ? 'card--selected' : ''}
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  border: avatar === preset ? '2px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.15)',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preset} alt="Avatar predefinido" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Step1Info({
   nome, idade, especie, avatar,
   onNomeChange, onIdadeChange, onEspecieChange, onAvatarChange,
@@ -55,6 +130,7 @@ export default function Step1Info({
   const { token } = useAuth()
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -77,170 +153,109 @@ export default function Step1Info({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="md:col-span-2">
-          <label style={labelStyle}>
-            Nome <span style={{ color: 'var(--error)' }}>*</span>
-          </label>
-          <p style={{
-            fontFamily: 'var(--font-im-fell)',
-            fontStyle: 'italic',
-            fontSize: '0.82rem',
-            color: 'rgba(var(--text-rgb),0.5)',
-            lineHeight: 1.7,
-            marginBottom: '0.6rem',
-          }}>
-            Dê um nome ao seu inseto. Pode ser o nome que escolheu, o que alguém lhe deu,
-            ou uma palavra que ficou grudada por razões que já esqueceu.
-          </p>
-          <input
-            type="text"
-            value={nome}
-            onChange={e => onNomeChange(e.target.value)}
-            placeholder="Como seu inseto é chamado?"
-            style={inputStyle}
-            autoFocus
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label style={labelStyle}>
-            Espécie <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
-          </label>
-          <p style={{
-            fontFamily: 'var(--font-im-fell)',
-            fontStyle: 'italic',
-            fontSize: '0.82rem',
-            color: 'rgba(var(--text-rgb),0.5)',
-            lineHeight: 1.7,
-            marginBottom: '0.6rem',
-          }}>
-            Defina a espécie: besouro, mariposa, formiga, louva-a-deus, grilo, percevejo,
-            centopeia, mosca, vespa, borboleta... enfim, qualquer coisa que rasteje, voe ou
-            escave. A espécie não tem efeito mecânico, mas vai influenciar como o mundo
-            reage a você.
-          </p>
-          <input
-            type="text"
-            value={especie}
-            onChange={e => onEspecieChange(e.target.value)}
-            placeholder="Formiga, Besouro, Mariposa..."
-            style={inputStyle}
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label style={labelStyle}>
-            Idade <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
-          </label>
-          <p style={{
-            fontFamily: 'var(--font-im-fell)',
-            fontStyle: 'italic',
-            fontSize: '0.82rem',
-            color: 'rgba(var(--text-rgb),0.5)',
-            lineHeight: 1.7,
-            marginBottom: '0.6rem',
-          }}>
-            A idade também não tem efeito mecânico, mas tem um grande peso interpretativo.
-          </p>
-          <input
-            type="number"
-            min={0}
-            value={idade}
-            onChange={e => onIdadeChange(e.target.value)}
-            placeholder="Em estações de vida"
-            style={inputStyle}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label style={labelStyle}>Avatar</label>
-        <div className="flex items-start gap-6 flex-wrap">
-          <div style={{
-            width: 96,
-            height: 96,
-            borderRadius: 10,
-            overflow: 'hidden',
-            border: '2px solid rgba(var(--gold-rgb),0.3)',
-            background: 'var(--bg-secondary)',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="Avatar selecionado" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem', fontFamily: 'var(--font-cinzel)' }}>Sem avatar</span>
+      <div className="flex items-start gap-6 flex-wrap">
+        <div style={{ flexShrink: 0 }}>
+          <label style={labelStyle}>Avatar</label>
+          <div className="flex flex-col gap-2" style={{ width: 96 }}>
+            <div style={{
+              width: 96,
+              height: 96,
+              borderRadius: 10,
+              overflow: 'hidden',
+              border: '2px solid rgba(var(--gold-rgb),0.3)',
+              background: 'var(--bg-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="Avatar selecionado" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem', fontFamily: 'var(--font-cinzel)' }}>Sem avatar</span>
+              )}
+            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="hk-btn hk-btn-soul"
+              style={{ fontSize: '0.62rem', padding: '0.4rem 0.6rem', borderRadius: 6, opacity: uploading ? 0.6 : 1, cursor: uploading ? 'not-allowed' : 'pointer' }}
+            >
+              {uploading ? 'Enviando...' : 'Enviar imagem'}
+            </button>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="hk-btn hk-btn-soul"
+              style={{ fontSize: '0.62rem', padding: '0.4rem 0.6rem', borderRadius: 6, cursor: 'pointer' }}
+            >
+              Selecionar
+            </button>
+            {uploadError && (
+              <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', color: 'var(--error)' }}>
+                {uploadError}
+              </p>
             )}
           </div>
+        </div>
 
-          <div className="flex flex-col gap-3" style={{ flex: 1, minWidth: 240 }}>
-            <p style={{
-              fontFamily: 'var(--font-im-fell)',
-              fontStyle: 'italic',
-              fontSize: '0.78rem',
-              color: 'rgba(var(--text-rgb),0.45)',
-            }}>
-              Escolha um avatar pronto ou envie sua própria imagem.
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              {AVATAR_PRESETS.map(preset => (
-                <button
-                  key={preset}
-                  onClick={() => onAvatarChange(preset)}
-                  className={avatar === preset ? 'card--selected' : ''}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 6,
-                    overflow: 'hidden',
-                    border: avatar === preset ? '2px solid var(--gold)' : '1px solid rgba(var(--gold-rgb),0.15)',
-                    padding: 0,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={preset} alt="Avatar predefinido" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </button>
-              ))}
-            </div>
-            <div>
+        <div className="flex flex-col gap-6" style={{ flex: 1, minWidth: 240 }}>
+          <div>
+            <label style={labelStyle}>
+              Nome <span style={{ color: 'var(--error)' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={nome}
+              onChange={e => onNomeChange(e.target.value)}
+              style={inputStyle}
+              autoFocus
+            />
+          </div>
+
+          <div className="flex items-start gap-4 flex-wrap">
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <label style={labelStyle}>
+                Espécie <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opcional)</span>
+              </label>
               <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
+                type="text"
+                value={especie}
+                onChange={e => onEspecieChange(e.target.value)}
+                style={inputStyle}
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="hk-btn hk-btn-soul"
-                style={{ fontSize: '0.68rem', padding: '0.5rem 1.1rem', borderRadius: 6, opacity: uploading ? 0.6 : 1, cursor: uploading ? 'not-allowed' : 'pointer' }}
-              >
-                {uploading ? 'Enviando...' : 'Enviar imagem'}
-              </button>
-              {avatar && (
-                <button
-                  onClick={() => onAvatarChange(null)}
-                  className="hk-btn hk-btn-soul"
-                  style={{ fontSize: '0.68rem', padding: '0.5rem 1.1rem', borderRadius: 6, marginLeft: '0.5rem' }}
-                >
-                  Remover
-                </button>
-              )}
-              {uploadError && (
-                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', color: 'var(--error)', marginTop: '0.5rem' }}>
-                  {uploadError}
-                </p>
-              )}
+            </div>
+
+            <div style={{ width: 90 }}>
+              <label style={labelStyle}>
+                Idade <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontSize: '0.72rem' }}>(opc.)</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                maxLength={3}
+                value={idade}
+                onChange={e => onIdadeChange(e.target.value)}
+                style={inputStyle}
+              />
             </div>
           </div>
         </div>
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+
+      <AvatarPickerModal
+        open={modalOpen}
+        avatar={avatar}
+        onClose={() => setModalOpen(false)}
+        onSelectPreset={url => { onAvatarChange(url); setModalOpen(false) }}
+      />
     </div>
   )
 }

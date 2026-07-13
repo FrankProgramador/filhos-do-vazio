@@ -9,14 +9,20 @@ const navItems = [
   { href: '/admin', label: 'Visão Geral' },
   { href: '/admin/tamanhos', label: 'Tamanhos' },
   { href: '/admin/tracos', label: 'Traços' },
-  { href: '/admin/tags', label: 'Tags' },
-  { href: '/admin/itens', label: 'Itens' },
-  { href: '/admin/pacotes', label: 'Pacotes de Equipamento' },
-  { href: '/admin/trilhas', label: 'Trilhas' },
+  // Fora do ar temporariamente enquanto a engine de Effects/Behavior/Calculation
+  // está em teste — descomentar conforme forem retomados.
+  // { href: '/admin/tags', label: 'Tags' },
+  // { href: '/admin/itens', label: 'Itens' },
+  // { href: '/admin/pacotes', label: 'Pacotes de Equipamento' },
+  // { href: '/admin/trilhas', label: 'Trilhas' },
   { href: '/admin/habilidades', label: 'Habilidades' },
-  { href: '/admin/gatilhos', label: 'Gatilhos' },
-  { href: '/admin/tipos-de-efeito', label: 'Tipos de Efeito' },
   { href: '/admin/efeitos', label: 'Efeitos' },
+  { href: '/admin/atributos', label: 'Atributos' },
+  { href: '/admin/recursos', label: 'Recursos' },
+  { href: '/admin/elementos', label: 'Elementos' },
+  { href: '/admin/condicoes', label: 'Condições' },
+  { href: '/admin/comportamentos', label: 'Comportamentos' },
+  { href: '/admin/calculos', label: 'Cálculos' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

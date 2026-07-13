@@ -1,5 +1,11 @@
 import { apiFetch } from '@/app/lib/api'
-import type { Ability, EffectFieldDefinition, EffectType, EquipmentPackage, GameEffect, GameTrait, Item, Size, Tag, Trigger, Trilha } from '@/app/lib/gameData'
+import type {
+  Ability, AbilityTargetFilterValue, AbilityTargetTypeValue, AbilityTriggerEventValue,
+  Attribute, Behavior, BehaviorFieldDefinition, Calculation, CalculationComponent,
+  Condition, Element, EquipmentPackage, GameEffect, GameResource, GameTrait,
+  Item, Size, StepConditionOperandValue, StepConditionOperatorValue, StepConditionOwnerValue,
+  StepConditionTypeValue, Tag, Trilha,
+} from '@/app/lib/gameData'
 import type { Book, BookType, Chapter, ContentStatus, Section, TipTapDoc } from '@/app/lib/bookData'
 
 function authed<T>(path: string, token: string | null, options: RequestInit = {}): Promise<T> {
@@ -100,23 +106,47 @@ export const adminPackages = {
     authed<{ message: string }>(`/api/admin/equipment-packages/${id}`, token, { method: 'DELETE' }),
 }
 
-// ── Triggers ─────────────────────────────────────────────────────────────
-
-export type TriggerPayload = Omit<Trigger, 'id'>
-
-export const adminTriggers = {
-  list: (token: string | null) => authed<Trigger[]>('/api/admin/triggers', token),
-  create: (token: string | null, data: TriggerPayload) =>
-    authed<Trigger>('/api/admin/triggers', token, { method: 'POST', body: JSON.stringify(data) }),
-  update: (token: string | null, id: number, data: TriggerPayload) =>
-    authed<Trigger>(`/api/admin/triggers/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
-  remove: (token: string | null, id: number) =>
-    authed<{ message: string }>(`/api/admin/triggers/${id}`, token, { method: 'DELETE' }),
-}
-
 // ── Abilities ────────────────────────────────────────────────────────────
 
-export type AbilityPayload = Omit<Ability, 'id' | 'triggers'> & { trigger_ids: number[] }
+export type AbilityStepEffectPayload = { effect_id: number; calculation_id: number | null; order: number }
+
+export type StepConditionPayload = {
+  type: StepConditionTypeValue
+  left_type?: StepConditionOperandValue | null
+  left_value?: string | null
+  left_ref_id?: number | null
+  left_owner?: StepConditionOwnerValue | null
+  operator?: StepConditionOperatorValue | null
+  right_type?: StepConditionOperandValue | null
+  right_value?: string | null
+  right_ref_id?: number | null
+  right_owner?: StepConditionOwnerValue | null
+  condition_owner?: StepConditionOwnerValue | null
+  condition_id?: number | null
+  children: StepConditionPayload[]
+}
+
+/**
+ * Árvore recursiva: só steps raiz (sem parent_step_id, implícito por não estarem
+ * dentro de `children` de outro) têm `trigger`. `is_else` marca o ramo "senão" de um
+ * pai condicional.
+ */
+export type AbilityStepPayload = {
+  id?: number
+  is_else?: boolean
+  trigger?: AbilityTriggerEventValue | null
+  priority: number
+  order: number
+  condition: StepConditionPayload | null
+  step_effects: AbilityStepEffectPayload[]
+  children: AbilityStepPayload[]
+}
+
+export type AbilityPayload = Omit<Ability, 'id' | 'steps'> & {
+  target_type: AbilityTargetTypeValue
+  target_filter: AbilityTargetFilterValue
+  steps: AbilityStepPayload[]
+}
 
 export const adminAbilities = {
   list: (token: string | null) => authed<Ability[]>('/api/admin/abilities', token),
@@ -128,30 +158,104 @@ export const adminAbilities = {
     authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
 }
 
-// ── Effect Types ─────────────────────────────────────────────────────────
+// ── Attributes ───────────────────────────────────────────────────────────
 
-export type EffectFieldDefinitionPayload = Omit<EffectFieldDefinition, 'effect_type_id' | 'id'> & { id?: number }
+export type AttributePayload = Omit<Attribute, 'id'>
 
-export type EffectTypePayload = Omit<EffectType, 'id' | 'field_definitions'> & {
-  field_definitions: EffectFieldDefinitionPayload[]
+export const adminAttributes = {
+  list: (token: string | null) => authed<Attribute[]>('/api/admin/attributes', token),
+  create: (token: string | null, data: AttributePayload) =>
+    authed<Attribute>('/api/admin/attributes', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: AttributePayload) =>
+    authed<Attribute>(`/api/admin/attributes/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/attributes/${id}`, token, { method: 'DELETE' }),
 }
 
-export const adminEffectTypes = {
-  list: (token: string | null) => authed<EffectType[]>('/api/admin/effect-types', token),
-  create: (token: string | null, data: EffectTypePayload) =>
-    authed<EffectType>('/api/admin/effect-types', token, { method: 'POST', body: JSON.stringify(data) }),
-  update: (token: string | null, id: number, data: EffectTypePayload) =>
-    authed<EffectType>(`/api/admin/effect-types/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+// ── Resources ────────────────────────────────────────────────────────────
+
+export type ResourcePayload = Omit<GameResource, 'id'>
+
+export const adminResources = {
+  list: (token: string | null) => authed<GameResource[]>('/api/admin/resources', token),
+  create: (token: string | null, data: ResourcePayload) =>
+    authed<GameResource>('/api/admin/resources', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: ResourcePayload) =>
+    authed<GameResource>(`/api/admin/resources/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
-    authed<{ message: string }>(`/api/admin/effect-types/${id}`, token, { method: 'DELETE' }),
+    authed<{ message: string }>(`/api/admin/resources/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Elements ─────────────────────────────────────────────────────────────
+
+export type ElementPayload = Omit<Element, 'id'>
+
+export const adminElements = {
+  list: (token: string | null) => authed<Element[]>('/api/admin/elements', token),
+  create: (token: string | null, data: ElementPayload) =>
+    authed<Element>('/api/admin/elements', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: ElementPayload) =>
+    authed<Element>(`/api/admin/elements/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/elements/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Conditions ───────────────────────────────────────────────────────────
+
+export type ConditionPayload = Omit<Condition, 'id'>
+
+export const adminConditions = {
+  list: (token: string | null) => authed<Condition[]>('/api/admin/conditions', token),
+  create: (token: string | null, data: ConditionPayload) =>
+    authed<Condition>('/api/admin/conditions', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: ConditionPayload) =>
+    authed<Condition>(`/api/admin/conditions/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/conditions/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Behaviors ────────────────────────────────────────────────────────────
+
+export type BehaviorFieldDefinitionPayload = Omit<BehaviorFieldDefinition, 'behavior_id' | 'id'> & { id?: number }
+
+export type BehaviorPayload = Omit<Behavior, 'id' | 'field_definitions'> & {
+  field_definitions: BehaviorFieldDefinitionPayload[]
+}
+
+export const adminBehaviors = {
+  list: (token: string | null) => authed<Behavior[]>('/api/admin/behaviors', token),
+  create: (token: string | null, data: BehaviorPayload) =>
+    authed<Behavior>('/api/admin/behaviors', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: BehaviorPayload) =>
+    authed<Behavior>(`/api/admin/behaviors/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/behaviors/${id}`, token, { method: 'DELETE' }),
+}
+
+// ── Calculations ─────────────────────────────────────────────────────────
+
+export type CalculationComponentPayload = Omit<CalculationComponent, 'calculation_id' | 'id'> & { id?: number }
+
+export type CalculationPayload = Omit<Calculation, 'id' | 'components'> & {
+  components: CalculationComponentPayload[]
+}
+
+export const adminCalculations = {
+  list: (token: string | null) => authed<Calculation[]>('/api/admin/calculations', token),
+  create: (token: string | null, data: CalculationPayload) =>
+    authed<Calculation>('/api/admin/calculations', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: CalculationPayload) =>
+    authed<Calculation>(`/api/admin/calculations/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/calculations/${id}`, token, { method: 'DELETE' }),
 }
 
 // ── Effects ──────────────────────────────────────────────────────────────
 
-export type EffectFieldValuePayload = { effect_field_definition_id: number; value: string | null }
+export type BehaviorFieldValuePayload = { behavior_field_definition_id: number; value: string | null }
 
-export type EffectPayload = Omit<GameEffect, 'id' | 'effect_type' | 'field_values'> & {
-  field_values: EffectFieldValuePayload[]
+export type EffectPayload = Omit<GameEffect, 'id' | 'behavior' | 'element' | 'behavior_field_values'> & {
+  behavior_field_values: BehaviorFieldValuePayload[]
 }
 
 export const adminEffects = {

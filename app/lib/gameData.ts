@@ -104,31 +104,43 @@ export type Trilha = {
   abilities: Ability[]
 }
 
-export type TriggerConditionType = 'none' | 'target_health_less_than' | 'target_has_status' | 'caster_has_effect' | 'custom'
-export type TriggerTargetType = 'self' | 'target' | 'allies' | 'enemies' | 'area'
-export type AreaShape = 'self' | 'cone' | 'explosion' | 'line' | 'cube'
+export type EffectFieldTypeValue =
+  | 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'multi_select'
+  | 'attribute' | 'resource' | 'condition' | 'dice' | 'expression' | 'entity' | 'effect' | 'target' | 'direction'
+  | 'calculation'
 
-export type Trigger = {
+/** Atributo cadastrável (Força, Casca, Graça...) — usado pela engine de Effects/Calculations. */
+export type Attribute = {
   id: number
   name: string
   slug: string
   description: string | null
-  condition_type: TriggerConditionType
-  condition_value: Record<string, unknown> | null
-  target_type: TriggerTargetType
-  area_shape: AreaShape | null
-  area_params: Record<string, unknown> | null
+  order: number
 }
 
-export type EffectFieldTypeValue =
-  | 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'multi_select'
-  | 'attribute' | 'resource' | 'condition' | 'dice' | 'expression' | 'entity' | 'effect' | 'target' | 'direction'
+/** Recurso cadastrável (Vida, Alma, Estamina...) — usado pela engine de Effects/Calculations. */
+export type GameResource = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  order: number
+}
+
+/** Natureza/classificação de um Effect (Physical, Fire, Sacred...). */
+export type Element = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+}
 
 export type SelectOption = { label: string; value: string }
 
-export type EffectFieldDefinition = {
+/** Diz COMO a engine executa um Effect (o algoritmo: Damage, Heal, Move...). */
+export type BehaviorFieldDefinition = {
   id: number
-  effect_type_id: number
+  behavior_id: number
   name: string
   label: string
   description: string | null
@@ -138,48 +150,150 @@ export type EffectFieldDefinition = {
   min_value: number | null
   max_value: number | null
   options: SelectOption[] | null
-  sort_order: number
+  order: number
 }
 
-export type EffectType = {
+export type Behavior = {
   id: number
   name: string
   slug: string
   description: string | null
-  field_definitions: EffectFieldDefinition[]
+  requires_calculation: boolean
+  field_definitions: BehaviorFieldDefinition[]
 }
 
-export type EffectFieldValue = {
+export type BehaviorFieldValue = {
   id: number
   effect_id: number
-  effect_field_definition_id: number
+  behavior_field_definition_id: number
   value: string | null
 }
 
-export type GameEffect = {
+export type CalculationOperationValue = 'add' | 'subtract' | 'multiply' | 'divide' | 'max' | 'min'
+export type CalculationSourceTypeValue =
+  | 'fixed_value' | 'attribute' | 'resource' | 'fixed_dice' | 'attribute_dice' | 'distance' | 'context' | 'position'
+
+export type CalculationComponent = {
   id: number
-  effect_type_id: number
+  calculation_id: number
+  order: number
+  operation: CalculationOperationValue
+  source_type: CalculationSourceTypeValue
+  source_id: number | null
+  value: number | null
+}
+
+/** Calculation é só VALUE — retorna um número via seus components. Lógica condicional vive em StepCondition. */
+export type Calculation = {
+  id: number
   name: string
   slug: string
   description: string | null
-  effect_type: EffectType
-  field_values: EffectFieldValue[]
+  components: CalculationComponent[]
 }
 
-export type AbilityType = 'active' | 'passive' | 'reaction'
+/** Catálogo de condições de status (Envenenado, Atordoado...) — referenciado por StepCondition (HAS_CONDITION). */
+export type Condition = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+}
+
+export type EffectTargetValue = 'self' | 'target' | 'source' | 'owner'
+
+export type GameEffect = {
+  id: number
+  behavior_id: number
+  element_id: number | null
+  target: EffectTargetValue
+  name: string
+  slug: string
+  description: string | null
+  behavior: Behavior
+  element: Element | null
+  behavior_field_values: BehaviorFieldValue[]
+}
+
+export type AbilityTargetTypeValue = 'self' | 'single' | 'area' | 'line' | 'cone'
+export type AbilityTargetFilterValue = 'ally' | 'enemy' | 'any'
+export type AbilityTriggerEventValue =
+  | 'on_turn_start' | 'on_turn_end' | 'on_attack' | 'on_defend' | 'on_hit' | 'on_use' | 'on_move' | 'on_dodge'
+  | 'on_enemy_enters_adjacent' | 'on_opposed_test' | 'on_spell_damage' | 'on_focus' | 'on_death' | 'on_kill' | 'on_craft'
+  | 'on_before_attack' | 'on_miss' | 'on_receive_attack' | 'on_receive_hit' | 'on_any'
+
+export type StepConditionTypeValue = 'compare' | 'has_condition' | 'and' | 'or'
+export type StepConditionOperandValue = 'fixed' | 'attribute' | 'resource' | 'context'
+export type StepConditionOwnerValue = 'self' | 'target' | 'source'
+export type StepConditionOperatorValue = '>' | '<' | '>=' | '<=' | '==' | '!='
+
+/**
+ * Árvore de condições: COMPARE (esquerda operador direita), HAS_CONDITION (alvo tem
+ * a Condition X?) ou AND/OR (combinando `children`). Substitui o uso de Calculation
+ * como lógica condicional.
+ */
+export type StepCondition = {
+  id: number
+  type: StepConditionTypeValue
+  parent_condition_id: number | null
+  left_type: StepConditionOperandValue | null
+  left_value: string | null
+  left_ref_id: number | null
+  left_owner: StepConditionOwnerValue | null
+  operator: StepConditionOperatorValue | null
+  right_type: StepConditionOperandValue | null
+  right_value: string | null
+  right_ref_id: number | null
+  right_owner: StepConditionOwnerValue | null
+  condition_owner: StepConditionOwnerValue | null
+  condition_id: number | null
+  children: StepCondition[]
+}
+
+export type AbilityStepEffect = {
+  id: number
+  ability_step_id: number
+  effect_id: number
+  calculation_id: number | null
+  order: number
+  effect: GameEffect
+  calculation: Calculation | null
+}
+
+/**
+ * AbilityStep é uma árvore de if/else: `parent_step_id`/`is_else` ligam um step a um
+ * pai condicional (o filho `is_else=false` roda se a condition do pai for verdadeira,
+ * o `is_else=true` roda senão). Só steps raiz (`parent_step_id` null) têm `trigger`.
+ * `priority` = ordem entre steps raiz do MESMO trigger (entre fontes/abilities
+ * diferentes); `order` = ordem entre irmãos (raízes ou filhos do mesmo pai).
+ */
+export type AbilityStep = {
+  id: number
+  ability_id: number
+  parent_step_id: number | null
+  is_else: boolean
+  trigger: AbilityTriggerEventValue | null
+  priority: number
+  order: number
+  child_steps: AbilityStep[]
+  condition_link: { id: number; step_condition: StepCondition } | null
+  step_effects: AbilityStepEffect[]
+}
 
 export type Ability = {
   id: number
   name: string
   slug: string
   description: string
-  type: AbilityType
-  activation_cost: Record<string, number> | null
-  cooldown: number
-  is_magic: boolean
-  is_unique: boolean
-  image: string | null
-  triggers: Trigger[]
+  icon: string | null
+  is_passive: boolean
+  is_hidden: boolean
+  display_order: number
+  range: number | null
+  target_type: AbilityTargetTypeValue
+  target_filter: AbilityTargetFilterValue
+  cooldown_base: number | null
+  steps: AbilityStep[]
 }
 
 export type CharSheet = {
@@ -200,6 +314,7 @@ export type CharSheet = {
 }
 
 export const MAX_TRACOS = 7
+export const MAX_ATTR_TRAITS = 7
 export const MAX_REMARKABLE = 3
 export const MAX_RARE = 1
 export const REQUIRED_PERSONALITY = 2

@@ -1,5 +1,5 @@
 import type { Atributos, GameTrait, Size } from '@/app/lib/gameData'
-import { MAX_TRACOS } from '@/app/lib/gameData'
+import { MAX_ATTR_TRAITS } from '@/app/lib/gameData'
 import AttributesPanel from './AttributesPanel'
 import ChosenTraitsPanel, { type ChosenTraitEntry } from './ChosenTraitsPanel'
 
@@ -8,13 +8,13 @@ interface Props {
   traits: GameTrait[]
   attrTraits: Record<number, number>
   atributos: Atributos
-  totalTracos: number
+  totalAttrTraits: number
   onAdd: (id: number) => void
   onRemove: (id: number) => void
 }
 
 export default function Step4Attributes({
-  size, traits, attrTraits, atributos, totalTracos, onAdd, onRemove,
+  size, traits, attrTraits, atributos, totalAttrTraits, onAdd, onRemove,
 }: Props) {
   const rootTraits = traits.filter(t => t.tipo === 'atributo' && t.prerequisite_trait_id === null)
   const selectedAttrTraits = traits.filter(t => t.tipo === 'atributo' && (attrTraits[t.id] ?? 0) > 0)
@@ -28,51 +28,6 @@ export default function Step4Attributes({
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Status bar */}
-      <div className="flex items-center justify-between" style={{
-        padding: '1rem 1.25rem',
-        background: 'var(--card)',
-        border: '1px solid rgba(var(--gold-rgb),0.1)',
-        borderRadius: 8,
-      }}>
-        <p style={{
-          fontFamily: 'var(--font-im-fell)',
-          fontStyle: 'italic',
-          fontSize: '0.8rem',
-          color: 'rgba(var(--text-rgb),0.5)',
-          margin: 0,
-        }}>
-          Primeiro selecione os traços de atributo, eles definem o personagem.
-        </p>
-        <div style={{
-          flexShrink: 0,
-          textAlign: 'center',
-          paddingLeft: '1rem',
-          borderLeft: '1px solid rgba(var(--gold-rgb),0.1)',
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-cinzel)',
-            fontSize: '0.55rem',
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            display: 'block',
-            marginBottom: '0.2rem',
-          }}>
-            Traços
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-cinzel)',
-            fontSize: '1.1rem',
-            fontWeight: 700,
-            color: totalTracos >= MAX_TRACOS ? 'var(--error)' : 'var(--text)',
-          }}>
-            {totalTracos}
-            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}> / {MAX_TRACOS}</span>
-          </span>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <AttributesPanel size={size} atributos={atributos} />
         <ChosenTraitsPanel
@@ -90,15 +45,15 @@ export default function Step4Attributes({
           textTransform: 'uppercase',
           color: 'var(--gold)',
         }}>
-          Traços de Atributo
+          Traços de Atributo — Escolha até {MAX_ATTR_TRAITS} traços de atributo
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {rootTraits.map(trait => {
             const count = attrTraits[trait.id] ?? 0
             const isSelected = count > 0
-            const canToggle = isSelected || totalTracos < MAX_TRACOS
-            const blockReason = !canToggle ? 'Limite de traços atingido' : null
+            const canToggle = isSelected || totalAttrTraits < MAX_ATTR_TRAITS
+            const blockReason = !canToggle ? 'Limite de traços de atributo atingido' : null
             const children = traits.filter(t => t.prerequisite_trait_id === trait.id)
 
             return (
@@ -143,7 +98,7 @@ export default function Step4Attributes({
                         )}
                       </div>
                       <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'rgba(var(--text-rgb),0.48)', marginTop: '0.3rem', lineHeight: 1.6 }}>
-                        {trait.mechanical_effect}
+                        {trait.description}
                       </p>
                       {blockReason && (
                         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.55rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
@@ -164,9 +119,9 @@ export default function Step4Attributes({
                       {children.map(sub => {
                         const subCount = attrTraits[sub.id] ?? 0
                         const isSubSelected = subCount > 0
-                        const canToggleSub = isSubSelected || (isSelected && totalTracos < MAX_TRACOS)
+                        const canToggleSub = isSubSelected || (isSelected && totalAttrTraits < MAX_ATTR_TRAITS)
                         const subBlockReason = !canToggleSub
-                          ? (!isSelected ? 'Escolha o traço principal primeiro' : 'Limite de traços atingido')
+                          ? (!isSelected ? 'Escolha o traço principal primeiro' : 'Limite de traços de atributo atingido')
                           : null
 
                         return (
@@ -205,7 +160,7 @@ export default function Step4Attributes({
                                     {sub.name}
                                   </span>
                                   <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.76rem', color: 'rgba(var(--text-rgb),0.4)', marginTop: '0.2rem', lineHeight: 1.5 }}>
-                                    {sub.mechanical_effect}
+                                    {sub.description}
                                   </p>
                                 </div>
                               </div>

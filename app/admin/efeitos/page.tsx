@@ -3,25 +3,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/app/lib/auth-context'
 import { ApiError } from '@/app/lib/api'
-import { adminEffectTypes, adminEffects, type EffectFieldValuePayload, type EffectPayload } from '@/app/lib/adminData'
-import type { EffectFieldDefinition, EffectType, GameEffect } from '@/app/lib/gameData'
+import {
+  adminAttributes, adminBehaviors, adminCalculations, adminConditions, adminEffects, adminElements, adminResources,
+  type BehaviorFieldValuePayload, type EffectPayload,
+} from '@/app/lib/adminData'
+import type {
+  Attribute, Behavior, BehaviorFieldDefinition, Calculation, Condition, Element as GameElement, EffectTargetValue,
+  GameEffect, GameResource,
+} from '@/app/lib/gameData'
 import { AdminTable, ConfirmButton, Field, Input, Select, Td, Textarea, Tr } from '../AdminUI'
 
-const ATTRS = ['poder', 'saber', 'casca', 'graca', 'coracao', 'estamina', 'alma', 'velocidade', 'fofo', 'assustador']
-const RESOURCES = ['estamina', 'alma', 'sustento', 'geo']
 const TARGETS = ['self', 'target', 'allies', 'enemies', 'area']
 const DIRECTIONS = ['frente', 'tras', 'esquerda', 'direita', 'cima', 'baixo']
 
+const EFFECT_TARGETS: EffectTargetValue[] = ['self', 'target', 'source', 'owner']
+const EFFECT_TARGET_LABELS: Record<EffectTargetValue, string> = {
+  self: 'Você mesmo', target: 'Alvo', source: 'Origem', owner: 'Dono',
+}
+
 const EMPTY: EffectPayload = {
-  effect_type_id: 0, name: '', slug: '', description: '', field_values: [],
+  behavior_id: 0, element_id: null, target: 'target',
+  name: '', slug: '', description: '', behavior_field_values: [],
 }
 
 function FieldInput({
-  definition, value, onChange,
+  definition, value, onChange, attributes, resources, calculations, conditions,
 }: {
-  definition: EffectFieldDefinition
+  definition: BehaviorFieldDefinition
   value: string | null
   onChange: (value: string | null) => void
+  attributes: Attribute[]
+  resources: GameResource[]
+  calculations: Calculation[]
+  conditions: Condition[]
 }) {
   switch (definition.field_type) {
     case 'textarea':
@@ -82,7 +96,7 @@ function FieldInput({
       return (
         <Select value={value ?? ''} onChange={e => onChange(e.target.value || null)}>
           <option value="">Selecione…</option>
-          {ATTRS.map(a => <option key={a} value={a}>{a}</option>)}
+          {attributes.map(a => <option key={a.id} value={a.slug}>{a.name}</option>)}
         </Select>
       )
 
@@ -90,7 +104,15 @@ function FieldInput({
       return (
         <Select value={value ?? ''} onChange={e => onChange(e.target.value || null)}>
           <option value="">Selecione…</option>
-          {RESOURCES.map(r => <option key={r} value={r}>{r}</option>)}
+          {resources.map(r => <option key={r.id} value={r.slug}>{r.name}</option>)}
+        </Select>
+      )
+
+    case 'calculation':
+      return (
+        <Select value={value ?? ''} onChange={e => onChange(e.target.value || null)}>
+          <option value="">Selecione…</option>
+          {calculations.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
       )
 
@@ -114,6 +136,13 @@ function FieldInput({
       return <Input placeholder="ex: 2d6+1" value={value ?? ''} onChange={e => onChange(e.target.value)} />
 
     case 'condition':
+      return (
+        <Select value={value ?? ''} onChange={e => onChange(e.target.value || null)}>
+          <option value="">Selecione…</option>
+          {conditions.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}
+        </Select>
+      )
+
     case 'entity':
     case 'effect':
     case 'text':
@@ -125,7 +154,12 @@ function FieldInput({
 export default function AdminEfeitosPage() {
   const { token } = useAuth()
   const [effects, setEffects] = useState<GameEffect[]>([])
-  const [effectTypes, setEffectTypes] = useState<EffectType[]>([])
+  const [behaviors, setBehaviors] = useState<Behavior[]>([])
+  const [elements, setElements] = useState<GameElement[]>([])
+  const [calculations, setCalculations] = useState<Calculation[]>([])
+  const [attributes, setAttributes] = useState<Attribute[]>([])
+  const [resources, setResources] = useState<GameResource[]>([])
+  const [conditions, setConditions] = useState<Condition[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<EffectPayload>(EMPTY)
@@ -133,42 +167,48 @@ export default function AdminEfeitosPage() {
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    adminEffectTypes.list(token).then(setEffectTypes)
+    adminBehaviors.list(token).then(setBehaviors)
+    adminElements.list(token).then(setElements)
+    adminCalculations.list(token).then(setCalculations)
+    adminAttributes.list(token).then(setAttributes)
+    adminResources.list(token).then(setResources)
+    adminConditions.list(token).then(setConditions)
     return adminEffects.list(token).then(setEffects).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [token])
 
-  const selectedType = useMemo(
-    () => effectTypes.find(t => t.id === form.effect_type_id) ?? null,
-    [effectTypes, form.effect_type_id],
+  const selectedBehavior = useMemo(
+    () => behaviors.find(b => b.id === form.behavior_id) ?? null,
+    [behaviors, form.behavior_id],
   )
 
   function startCreate() { setEditingId(0); setForm(EMPTY); setError(null) }
   function startEdit(effect: GameEffect) {
     setEditingId(effect.id)
     setForm({
-      effect_type_id: effect.effect_type_id,
+      behavior_id: effect.behavior_id,
+      element_id: effect.element_id,
+      target: effect.target,
       name: effect.name,
       slug: effect.slug,
       description: effect.description,
-      field_values: effect.field_values.map(v => ({ effect_field_definition_id: v.effect_field_definition_id, value: v.value })),
+      behavior_field_values: effect.behavior_field_values.map(v => ({ behavior_field_definition_id: v.behavior_field_definition_id, value: v.value })),
     })
     setError(null)
   }
   function cancel() { setEditingId(null); setForm(EMPTY); setError(null) }
 
-  function selectType(effectTypeId: number) {
-    setForm({ ...form, effect_type_id: effectTypeId, field_values: [] })
+  function selectBehavior(behaviorId: number) {
+    setForm({ ...form, behavior_id: behaviorId, behavior_field_values: [] })
   }
 
-  function valueFor(definitionId: number): string | null {
-    return form.field_values.find(v => v.effect_field_definition_id === definitionId)?.value ?? null
+  function behaviorValueFor(definitionId: number): string | null {
+    return form.behavior_field_values.find(v => v.behavior_field_definition_id === definitionId)?.value ?? null
   }
-
-  function setValueFor(definitionId: number, value: string | null) {
-    const rest = form.field_values.filter(v => v.effect_field_definition_id !== definitionId)
-    const entry: EffectFieldValuePayload = { effect_field_definition_id: definitionId, value }
-    setForm({ ...form, field_values: [...rest, entry] })
+  function setBehaviorValueFor(definitionId: number, value: string | null) {
+    const rest = form.behavior_field_values.filter(v => v.behavior_field_definition_id !== definitionId)
+    const entry: BehaviorFieldValuePayload = { behavior_field_definition_id: definitionId, value }
+    setForm({ ...form, behavior_field_values: [...rest, entry] })
   }
 
   async function save() {
@@ -196,17 +236,17 @@ export default function AdminEfeitosPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6" style={{ maxWidth: 1100 }}>
+    <div className="flex flex-col gap-6" style={{ maxWidth: 1000 }}>
       <div className="flex items-center justify-between">
         <h1 style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.4rem', color: 'var(--text)' }}>Efeitos</h1>
-        {editingId === null && effectTypes.length > 0 && (
+        {editingId === null && behaviors.length > 0 && (
           <button onClick={startCreate} className="btn-hero" style={{ fontSize: '0.7rem', padding: '0.55rem 1.2rem' }}>+ Novo Efeito</button>
         )}
       </div>
 
-      {effectTypes.length === 0 && !loading && (
+      {behaviors.length === 0 && !loading && (
         <div className="alert" style={{ fontSize: '0.8rem' }}>
-          Nenhum Tipo de Efeito cadastrado ainda — crie um em Admin → Tipos de Efeito antes de criar Efeitos.
+          Cadastre ao menos um Comportamento antes de criar Efeitos.
         </div>
       )}
 
@@ -218,10 +258,24 @@ export default function AdminEfeitosPage() {
             {editingId ? 'Editar Efeito' : 'Novo Efeito'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="Tipo de Efeito" required>
-              <Select value={form.effect_type_id || ''} onChange={e => selectType(Number(e.target.value))}>
+            <Field label="Comportamento" required>
+              <Select value={form.behavior_id || ''} onChange={e => selectBehavior(Number(e.target.value))}>
                 <option value="">Selecione…</option>
-                {effectTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {behaviors.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </Select>
+            </Field>
+            <Field label="Alvo" required>
+              <Select value={form.target} onChange={e => setForm({ ...form, target: e.target.value as EffectTargetValue })}>
+                {EFFECT_TARGETS.map(t => <option key={t} value={t}>{EFFECT_TARGET_LABELS[t]}</option>)}
+              </Select>
+            </Field>
+            <Field label="Elemento">
+              <Select
+                value={form.element_id ?? ''}
+                onChange={e => setForm({ ...form, element_id: e.target.value ? Number(e.target.value) : null })}
+              >
+                <option value="">Nenhum</option>
+                {elements.map(el => <option key={el.id} value={el.id}>{el.name}</option>)}
               </Select>
             </Field>
             <Field label="Nome" required><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
@@ -229,34 +283,43 @@ export default function AdminEfeitosPage() {
             <div className="md:col-span-2">
               <Field label="Descrição"><Textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
             </div>
+            {selectedBehavior?.requires_calculation && (
+              <div className="md:col-span-2">
+                <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'rgba(var(--text-rgb),0.55)' }}>
+                  Este comportamento exige um Cálculo — ele é escolhido por Step, em Admin → Habilidades (o mesmo Effect pode ter valores diferentes dependendo de quem o usa).
+                </p>
+              </div>
+            )}
           </div>
 
-          {selectedType && (
-            <>
-              <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '1.25rem 0 0.6rem' }}>
-                Campos de {selectedType.name}
-              </h3>
-              {selectedType.field_definitions.length === 0 ? (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Este tipo de efeito ainda não tem campos definidos.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {selectedType.field_definitions.map(definition => (
-                    <div key={definition.id} className={definition.field_type === 'textarea' || definition.field_type === 'expression' ? 'md:col-span-2' : ''}>
-                      <Field label={definition.label} required={definition.is_required}>
-                        <FieldInput
-                          definition={definition}
-                          value={valueFor(definition.id) ?? definition.default_value}
-                          onChange={v => setValueFor(definition.id, v)}
-                        />
-                      </Field>
-                      {definition.description && (
-                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{definition.description}</p>
-                      )}
-                    </div>
-                  ))}
+          <h3 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '1.25rem 0 0.6rem' }}>
+            Parâmetros de {selectedBehavior?.name ?? 'Comportamento'}
+          </h3>
+          {!selectedBehavior ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Selecione um Comportamento.</p>
+          ) : selectedBehavior.field_definitions.length === 0 ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Este comportamento não tem parâmetros próprios.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {selectedBehavior.field_definitions.map(definition => (
+                <div key={definition.id}>
+                  <Field label={definition.label} required={definition.is_required}>
+                    <FieldInput
+                      definition={definition}
+                      value={behaviorValueFor(definition.id) ?? definition.default_value}
+                      onChange={v => setBehaviorValueFor(definition.id, v)}
+                      attributes={attributes}
+                      resources={resources}
+                      calculations={calculations}
+                      conditions={conditions}
+                    />
+                  </Field>
+                  {definition.description && (
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{definition.description}</p>
+                  )}
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           <div className="flex items-center gap-2" style={{ marginTop: '1.25rem' }}>
@@ -267,12 +330,13 @@ export default function AdminEfeitosPage() {
       )}
 
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Carregando...</p> : (
-        <AdminTable headers={['Nome', 'Slug', 'Tipo de Efeito', '']}>
+        <AdminTable headers={['Nome', 'Slug', 'Comportamento', 'Alvo', '']}>
           {effects.map(effect => (
             <Tr key={effect.id}>
               <Td>{effect.name}</Td>
               <Td>{effect.slug}</Td>
-              <Td>{effect.effect_type.name}</Td>
+              <Td>{effect.behavior.name}</Td>
+              <Td>{EFFECT_TARGET_LABELS[effect.target]}</Td>
               <Td>
                 <div className="flex items-center gap-2">
                   <button onClick={() => startEdit(effect)} className="ddb-badge ddb-badge-gold" style={{ border: 'none', cursor: 'pointer' }}>Editar</button>
