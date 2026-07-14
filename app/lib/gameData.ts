@@ -137,6 +137,32 @@ export type Element = {
 
 export type SelectOption = { label: string; value: string }
 
+export type DiceSkinRarityValue = 'comum' | 'raro' | 'epico' | 'lendario'
+
+/** Skin colecionável de dado 3D — cor/material/textura + oferta limitada. */
+export type DiceSkin = {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  rarity: DiceSkinRarityValue
+  foreground_color: string
+  background_color: string
+  material: string
+  texture: string
+  /** Face com pips (bolinhas) em vez de números. */
+  pip_style: boolean
+  total_supply: number
+  /** Só presente na listagem do admin (calculado, não é uma coluna). */
+  remaining_supply?: number
+}
+
+/** DiceSkin possuída por um usuário — inclui os campos do pivot `user_dice_skins`. */
+export type OwnedDiceSkin = DiceSkin & {
+  quantity: number
+  order: number
+}
+
 /** Diz COMO a engine executa um Effect (o algoritmo: Damage, Heal, Move...). */
 export type BehaviorFieldDefinition = {
   id: number
@@ -468,4 +494,22 @@ export function countCappedByRarity(selected: SelectedTrait[], rarity: TraitRari
   return selected
     .filter(({ trait }) => trait.rarity === rarity)
     .reduce((total, { quantity }) => total + quantity, 0)
+}
+
+// ── Coleção de skins de dado ────────────────────────────────────────────
+
+/** Coleção do usuário autenticado, já ordenada pela ordem de rotação que ele escolheu. */
+export function fetchMyDiceSkins(token: string | null): Promise<OwnedDiceSkin[]> {
+  return apiFetch<OwnedDiceSkin[]>('/api/me/dice-skins', {}, token)
+}
+
+export type DiceSkinDrawResult = { message: string; skin: DiceSkin | null }
+
+/** Sorteio grátis (1x por 24h) — se já sorteou nas últimas 24h, rejeita com ApiError (status 429, mensagem pronta pro usuário). */
+export function drawDailyDiceSkin(token: string | null): Promise<DiceSkinDrawResult> {
+  return apiFetch<DiceSkinDrawResult>('/api/dice-skins/sorteio', { method: 'POST' }, token)
+}
+
+export function reorderMyDiceSkins(token: string | null, ids: number[]): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/api/me/dice-skins/reordenar', { method: 'PUT', body: JSON.stringify({ ids }) }, token)
 }

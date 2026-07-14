@@ -185,12 +185,61 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid;
+  border: 1.5px solid rgba(var(--gold-rgb), 0.3);
   border-radius: 6px;
   font-family: var(--font-cinzel), serif;
   font-weight: 700;
   font-size: 0.85rem;
   animation: die-roll-in 0.35s ease-out backwards;
+  transition: opacity 0.15s;
+}
+
+@keyframes die-flash {
+  0%, 100% { box-shadow: 0 0 0 rgba(var(--success-rgb), 0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(var(--success-rgb), 0.85); }
+}
+
+@keyframes die-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20%      { transform: translateX(-5px) rotate(-6deg); }
+  40%      { transform: translateX(4px) rotate(5deg); }
+  60%      { transform: translateX(-4px) rotate(-3deg); }
+  80%      { transform: translateX(3px) rotate(2deg); }
+}
+
+.die-face--success {
+  background: rgba(var(--success-rgb), 0.18);
+  border-color: var(--success);
+  color: var(--success);
+  animation: die-roll-in 0.35s ease-out backwards, die-flash 0.6s ease-out 0.3s;
+}
+
+.die-face--fail {
+  background: rgba(var(--error-rgb), 0.14);
+  border-color: var(--error);
+  color: var(--error);
+  animation: die-roll-in 0.35s ease-out backwards, die-shake 0.4s ease-out 0.3s;
+}
+
+/* Brilho verde em volta de quem está na vez (Arena mano a mano) */
+@keyframes arena-turn-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(var(--success-rgb), 0.55); }
+  50%      { box-shadow: 0 0 10px 2px rgba(var(--success-rgb), 0.55); }
+}
+
+.arena-turn-glow {
+  border: 1px solid rgba(var(--success-rgb), 0.6);
+  animation: arena-turn-pulse 1.8s ease-in-out infinite;
+}
+
+/* Menu de ações flutuante da Arena — discreto até passar o mouse por cima. */
+.arena-action-menu {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.arena-action-menu:hover {
+  opacity: 1;
 }
 
 .particle-gold {

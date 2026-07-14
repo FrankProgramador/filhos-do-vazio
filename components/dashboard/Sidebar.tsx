@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth-context'
 import {
   IconChevronLeft,
+  IconDice,
   IconGrid,
   IconHome,
   IconMap,
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { href: '/painel/personagens', label: 'Meus Personagens', icon: IconShield },
   { href: '/painel/mapas', label: 'Mapas', icon: IconGrid },
   { href: '/painel/jogo', label: 'Jogo (teste)', icon: IconPlay },
+  { href: '/painel/colecao-de-dados', label: 'Coleção de Dados', icon: IconDice },
   {
     href: '/locais',
     label: 'Mundo',

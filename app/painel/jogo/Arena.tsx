@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Character } from '@/app/lib/gameData'
+import { fetchMyDiceSkins, type Character, type OwnedDiceSkin } from '@/app/lib/gameData'
+import { useAuth } from '@/app/lib/auth-context'
+import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
+import { BattleLog, DICE_APPEARANCE_DEFAULT, defaultAppearances, HeartBar, StatLine, SUCCESS_THRESHOLD, triangularCost } from './shared'
+import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
 
 type ArenaToken = {
   id: string
@@ -103,9 +107,7 @@ const ATTACK_OPTIONS: AttackOption[] = [
   { id: 'rock', label: 'Jogar pedra', range: 6, baseDamage: 1 },
 ]
 
-const SUCCESS_THRESHOLD = 5
 const HIT_EFFECT_DURATION = 500
-const DICE_DISPLAY_DURATION = 1700
 const DEFAULT_ZOOM = 1.5
 const DRAG_THRESHOLD = 4
 const VIEWPORT_HEIGHT = 'min(78vh, 760px)'
@@ -306,12 +308,31 @@ export default function Arena({ character, onExit }: { character: Character; onE
   const [turnBanner, setTurnBanner] = useState<string | null>(() => `Turno de ${character.name}`)
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
   const [battleLog, setBattleLog] = useState<string[]>([`Turno 1 — vez de ${character.name}.`])
-  const [diceDisplay, setDiceDisplay] = useState<{ rolls: number[]; key: number } | null>(null)
   const canvasViewportRef = useRef<HTMLDivElement>(null)
+  const diceStage = useDiceStageContext()
+  const { token } = useAuth()
+  const [myDiceSkins, setMyDiceSkins] = useState<OwnedDiceSkin[]>([])
+
+  useEffect(() => {
+    fetchMyDiceSkins(token).then(setMyDiceSkins).catch(() => setMyDiceSkins([]))
+  }, [token])
+
+  /** Cicla pela coleção do jogador (ordem que ele escolheu) — branco padrão se ele ainda não tiver nenhuma skin. */
+  /**
+   * Um dado físico por skin possuída, na ordem escolhida — NÃO repete uma skin
+   * escassa pra preencher os dados que sobrarem (ex: só 1 dado vermelho na coleção
+   * → só 1 dos físicos sai vermelho, o resto sai branco padrão, nunca vermelho de novo).
+   */
+  function myAppearances(count: number): DiceAppearance[] {
+    return Array.from({ length: count }, (_, i) => {
+      const skin = myDiceSkins[i]
+      if (!skin) return { ...DICE_APPEARANCE_DEFAULT }
+      return { foreground: skin.foreground_color, background: skin.background_color, material: skin.material, texture: skin.texture, pipStyle: skin.pip_style }
+    })
+  }
   const tokensRef = useRef(tokens)
   const animatingRef = useRef(false)
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const diceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const avatarImagesRef = useRef<Map<string, HTMLImageElement>>(new Map())
   const avatarFailedRef = useRef<Set<string>>(new Set())
   const hitEffectsRef = useRef<Map<string, number>>(new Map())
@@ -387,13 +408,11 @@ export default function Arena({ character, onExit }: { character: Character; onE
     setBattleLog(prev => [...prev, text])
   }
 
-  /** Mostra os dados rolados sobre o campo por alguns instantes. */
-  function showDiceRoll(rolls: number[]) {
-    setDiceDisplay({ rolls, key: Date.now() })
-    if (diceTimeoutRef.current) clearTimeout(diceTimeoutRef.current)
-    diceTimeoutRef.current = setTimeout(() => setDiceDisplay(null), DICE_DISPLAY_DURATION)
-  }
-
+  /**
+   * Anima os dados 3D com os valores já sorteados por `rollDice` — o resultado
+   * (dano, sucessos) já foi calculado antes desta chamada; aqui só reproduz
+   * visualmente o mesmo resultado (notação `NdN@v1,v2,...`), sem sortear de novo.
+   */
   /** Dispara a animação de tremida + flash vermelho num token atingido. */
   function triggerHitEffect(tokenId: string) {
     hitEffectsRef.current.set(tokenId, performance.now())
@@ -704,7 +723,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
           })
         )
 
-        showDiceRoll(rolls)
+        diceStage.showDiceRoll(rolls, result.hit ? `Você causou ${result.damage} de dano em ${target.label}.` : 'Você errou o ataque.', myAppearances(rolls.length))
         if (result.hit) triggerHitEffect(target.id)
 
         const message = result.hit
@@ -816,10 +835,20 @@ export default function Arena({ character, onExit }: { character: Character; onE
 
     function finish(finalPos: Cell) {
       const isAdjacent = currentPlayer ? footprintDistanceToCell(tokenCells(currentPlayer), finalPos) === 1 : false
+
+      // Calculado uma vez fora do closure de setTokens (não depende de qual token o
+      // .map() está visitando) — evita o TS perder a narrowing de um `let` reatribuído
+      // dentro de uma closure passada pro setState.
+      const attack = isAdjacent && currentPlayer && currentEnemy
+        ? (() => {
+            const rolls = rollDice(currentEnemy.estaminaMax + currentEnemy.poder)
+            const result = resolveDamage(rolls, 1, currentPlayer.casca)
+            return { rolls, result, rollsText: rolls.join(', '), targetId: currentPlayer.id }
+          })()
+        : null
+
       let enemyAttackMessage: string | null = null
       let enemyLogMessage: string | null = null
-      let enemyRolls: number[] | null = null
-      let enemyHitTargetId: string | null = null
 
       setTokens(prev =>
         prev.map(t => {
@@ -827,28 +856,25 @@ export default function Arena({ character, onExit }: { character: Character; onE
           if (t.isEnemy) return t
 
           const resetToken = { ...t, movementUsed: 0, attacked: false }
-          if (!isAdjacent || !currentEnemy) return resetToken
+          if (!attack || !currentEnemy || t.id !== attack.targetId) return resetToken
 
-          const rolls = rollDice(currentEnemy.estaminaMax + currentEnemy.poder)
-          const result = resolveDamage(rolls, 1, t.casca)
-          const rollsText = rolls.join(', ')
-          enemyRolls = rolls
-
-          if (!result.hit) {
+          if (!attack.result.hit) {
             enemyAttackMessage = 'O inimigo atacou e errou!'
-            enemyLogMessage = `${currentEnemy.label} ataca e erra [${rollsText}]`
+            enemyLogMessage = `${currentEnemy.label} ataca e erra [${attack.rollsText}]`
             return resetToken
           }
 
-          enemyAttackMessage = `O inimigo atacou! Você perde ${result.damage} de vida`
-          enemyLogMessage = `${currentEnemy.label} ataca: ${result.successes} sucesso(s) [${rollsText}] — ${result.damage} de dano em ${t.label} (casca restante: ${result.remainingCasca})`
-          enemyHitTargetId = t.id
-          return { ...resetToken, hp: Math.max(0, t.hp - result.damage), casca: result.remainingCasca }
+          enemyAttackMessage = `O inimigo atacou! Você perde ${attack.result.damage} de vida`
+          enemyLogMessage = `${currentEnemy.label} ataca: ${attack.result.successes} sucesso(s) [${attack.rollsText}] — ${attack.result.damage} de dano em ${t.label} (casca restante: ${attack.result.remainingCasca})`
+          return { ...resetToken, hp: Math.max(0, t.hp - attack.result.damage), casca: attack.result.remainingCasca }
         })
       )
       setTurn(t => t + 1)
-      if (enemyRolls) showDiceRoll(enemyRolls)
-      if (enemyHitTargetId) triggerHitEffect(enemyHitTargetId)
+      if (attack) {
+        const resultText = attack.result.hit ? `Você sofreu ${attack.result.damage} de dano.` : 'O inimigo errou o ataque.'
+        diceStage.showDiceRoll(attack.rolls, resultText, defaultAppearances(attack.rolls.length))
+        if (attack.result.hit) triggerHitEffect(attack.targetId)
+      }
       if (enemyLogMessage) logEvent(enemyLogMessage)
       logEvent(`Turno ${turn + 1} — vez de ${character.name}.`)
       if (enemyAttackMessage) {
@@ -926,40 +952,6 @@ export default function Arena({ character, onExit }: { character: Character; onE
             />
           </div>
 
-          {diceDisplay && (
-            <div
-              key={diceDisplay.key}
-              className="dice-tray"
-              style={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                zIndex: 25,
-                display: 'flex',
-                gap: 6,
-                padding: 10,
-                borderRadius: 10,
-                background: 'rgba(var(--bg-rgb),0.85)',
-                border: '1px solid rgba(var(--gold-rgb),0.35)',
-              }}
-            >
-              {diceDisplay.rolls.map((roll, i) => (
-                <span
-                  key={i}
-                  className="die-face"
-                  style={{
-                    animationDelay: `${i * 60}ms`,
-                    background: roll >= SUCCESS_THRESHOLD ? 'rgba(var(--success-rgb),0.18)' : 'rgba(var(--bg-secondary-rgb),0.9)',
-                    borderColor: roll >= SUCCESS_THRESHOLD ? 'var(--success)' : 'rgba(var(--gold-rgb),0.3)',
-                    color: roll >= SUCCESS_THRESHOLD ? 'var(--success)' : 'var(--text)',
-                  }}
-                >
-                  {roll}
-                </span>
-              ))}
-            </div>
-          )}
-
           {turnBanner && (
             <div
               className="ddb-panel parchment p-3 flex items-center justify-center"
@@ -980,7 +972,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
           )}
         </div>
 
-        <BattleLog entries={battleLog} />
+        <BattleLog entries={battleLog} height={ROWS * CELL + 24} />
       </div>
 
       <div
@@ -1026,16 +1018,21 @@ export default function Arena({ character, onExit }: { character: Character; onE
               <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 Quanta estamina gastar?
               </span>
-              {Array.from({ length: attacker.estaminaMax }, (_, i) => i + 1).map(stamina => (
-                <button
-                  key={stamina}
-                  type="button"
-                  className="hk-btn hk-btn-soul px-3 py-1.5 rounded text-xs"
-                  onClick={() => handleSelectStamina(stamina)}
-                >
-                  {stamina} {stamina === 1 ? 'ponto' : 'pontos'} · {stamina + attacker.poder} dados
-                </button>
-              ))}
+              {Array.from({ length: 20 }, (_, i) => i + 1)
+                .filter(diceCount => triangularCost(diceCount) <= attacker.estaminaMax)
+                .map(diceCount => {
+                  const cost = triangularCost(diceCount)
+                  return (
+                    <button
+                      key={diceCount}
+                      type="button"
+                      className="hk-btn hk-btn-soul px-3 py-1.5 rounded text-xs"
+                      onClick={() => handleSelectStamina(diceCount)}
+                    >
+                      {cost} {cost === 1 ? 'ponto' : 'pontos'} · {diceCount + attacker.poder} dados
+                    </button>
+                  )
+                })}
               <button type="button" className="hk-btn hk-btn-gold px-3 py-1.5 rounded text-xs" onClick={() => setPendingAttackOption(null)}>
                 Cancelar
               </button>
@@ -1067,59 +1064,3 @@ export default function Arena({ character, onExit }: { character: Character; onE
   )
 }
 
-function BattleLog({ entries }: { entries: string[] }) {
-  return (
-    <div className="ddb-panel parchment p-3 flex flex-col gap-2" style={{ width: 280, maxHeight: ROWS * CELL + 24 }}>
-      <span
-        style={{
-          fontFamily: 'var(--font-cinzel)',
-          fontSize: '0.62rem',
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: 'var(--gold)',
-        }}
-      >
-        Log de batalha
-      </span>
-      <div className="flex flex-col gap-1.5 overflow-y-auto" style={{ maxHeight: ROWS * CELL - 24 }}>
-        {entries.map((entry, i) => (
-          <p
-            key={i}
-            style={{
-              fontFamily: 'var(--font-im-fell)',
-              fontStyle: 'italic',
-              fontSize: '0.88rem',
-              lineHeight: 1.5,
-              color: i === entries.length - 1 ? 'var(--text)' : 'rgba(var(--text-rgb),0.55)',
-            }}
-          >
-            {entry}
-          </p>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function StatLine({ poder, casca, estamina }: { poder: number; casca: number; estamina: number }) {
-  return (
-    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>
-      Poder {poder} · Casca {casca} · Estamina {estamina}
-    </span>
-  )
-}
-
-function HeartBar({ label, hp, maxHp }: { label: string; hp: number; maxHp: number }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic' }}>{label}</span>
-      <span style={{ display: 'flex', gap: 2 }}>
-        {Array.from({ length: maxHp }, (_, i) => (
-          <span key={i} style={{ fontSize: '0.95rem', color: i < hp ? '#a34a4a' : 'rgba(163, 74, 74, 0.25)' }}>
-            ♥
-          </span>
-        ))}
-      </span>
-    </div>
-  )
-}

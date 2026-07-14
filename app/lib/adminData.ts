@@ -2,7 +2,7 @@ import { apiFetch } from '@/app/lib/api'
 import type {
   Ability, AbilityTargetFilterValue, AbilityTargetTypeValue, AbilityTriggerEventValue,
   Attribute, Behavior, BehaviorFieldDefinition, Calculation, CalculationComponent,
-  Condition, Element, EquipmentPackage, GameEffect, GameResource, GameTrait,
+  Condition, DiceSkin, DiceSkinRarityValue, Element, EquipmentPackage, GameEffect, GameResource, GameTrait,
   Item, Size, StepConditionOperandValue, StepConditionOperatorValue, StepConditionOwnerValue,
   StepConditionTypeValue, Tag, Trilha,
 } from '@/app/lib/gameData'
@@ -349,4 +349,29 @@ export const adminSections = {
       method: 'PUT',
       body: JSON.stringify({ ids }),
     }),
+}
+
+// ── Skins de dado ────────────────────────────────────────────────────────
+
+export type DiceSkinPayload = {
+  name: string
+  slug: string
+  description?: string | null
+  rarity: DiceSkinRarityValue
+  foreground_color: string
+  background_color: string
+  material: string
+  texture: string
+  pip_style: boolean
+  total_supply: number
+}
+
+export const adminDiceSkins = {
+  list: (token: string | null) => authed<DiceSkin[]>('/api/admin/dice-skins', token),
+  create: (token: string | null, data: DiceSkinPayload) =>
+    authed<DiceSkin>('/api/admin/dice-skins', token, { method: 'POST', body: JSON.stringify(data) }),
+  update: (token: string | null, id: number, data: DiceSkinPayload) =>
+    authed<DiceSkin>(`/api/admin/dice-skins/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/dice-skins/${id}`, token, { method: 'DELETE' }),
 }

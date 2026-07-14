@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/lib/auth-context'
 import Sidebar from '@/components/dashboard/Sidebar'
 import Topbar from '@/components/dashboard/Topbar'
+import { DiceStageProvider } from '@/components/dashboard/DiceStageContext'
 
 const COLLAPSE_KEY = 'fdv_sidebar_collapsed'
 
@@ -47,19 +48,21 @@ export default function DashboardShell({ title, children }: { title: string; chi
   }
 
   return (
-    <div className="dash-shell">
-      <Sidebar
-        activePath={pathname}
-        collapsed={collapsed}
-        mobileOpen={mobileOpen}
-        onToggleCollapse={toggleCollapse}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
+    <DiceStageProvider>
+      <div className="dash-shell">
+        <Sidebar
+          activePath={pathname}
+          collapsed={collapsed}
+          mobileOpen={mobileOpen}
+          onToggleCollapse={toggleCollapse}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
 
-      <div className="flex flex-col flex-1 min-w-0">
-        <Topbar title={title} onOpenMobile={() => setMobileOpen(true)} />
-        <main className="dash-content">{children}</main>
+        <div className="flex flex-col flex-1 min-w-0">
+          <Topbar title={title} onOpenMobile={() => setMobileOpen(true)} />
+          <main className="dash-content">{children}</main>
+        </div>
       </div>
-    </div>
+    </DiceStageProvider>
   )
 }

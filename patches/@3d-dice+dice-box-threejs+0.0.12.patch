@@ -1,0 +1,13 @@
+diff --git a/node_modules/@3d-dice/dice-box-threejs/dist/dice-box-threejs.es.js b/node_modules/@3d-dice/dice-box-threejs/dist/dice-box-threejs.es.js
+index 2c463ab..d13d340 100644
+--- a/node_modules/@3d-dice/dice-box-threejs/dist/dice-box-threejs.es.js
++++ b/node_modules/@3d-dice/dice-box-threejs/dist/dice-box-threejs.es.js
+@@ -16642,7 +16642,7 @@ class Mp {
+         t.push(this.getTexture(e[n]));
+       return t;
+     }
+-    return Is.hasOwnProperty(e) ? Is[e] : Is.none;
++    if (Is.hasOwnProperty(e)) return Is[e]; if (e && e !== "none") return { name: e, composite: "multiply", source: "textures/" + e + ".webp", source_bump: "", material: "none" }; return Is.none;
+   }
+ }
+ const Sp = {

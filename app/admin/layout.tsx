@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/app/lib/auth-context'
+import { DiceStageProvider } from '@/components/dashboard/DiceStageContext'
 
 const navItems = [
   { href: '/admin', label: 'Visão Geral' },
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/admin/condicoes', label: 'Condições' },
   { href: '/admin/comportamentos', label: 'Comportamentos' },
   { href: '/admin/calculos', label: 'Cálculos' },
+  { href: '/admin/dados', label: 'Skins de Dado' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
+    <DiceStageProvider>
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
       <aside style={{
         width: 230,
@@ -104,5 +107,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+    </DiceStageProvider>
   )
 }
