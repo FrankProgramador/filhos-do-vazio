@@ -23,6 +23,7 @@ function buildSheetData(character: Character): CharacterSheetData {
     level: character.level,
     geo: character.geo,
     sustento: character.sustento,
+    sustentoMaximo: character.sustento_maximo,
     size: character.size,
     trilha: character.trilha,
     atributos,

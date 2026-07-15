@@ -20,6 +20,7 @@ declare module '@3d-dice/dice-box-threejs' {
     assetPath?: string
     theme_material?: string
     theme_colorset?: string
+    theme_texture?: string
     strength?: number
     gravity_multiplier?: number
     onRollComplete?: (result: DiceBoxRollResult) => void

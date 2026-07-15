@@ -1444,3 +1444,35 @@ body {
   }
 }
 
+/* ─── Tooltip simples (hover) — usado na ficha de personagem (estágio da fome) ── */
+
+.hover-tip {
+  position: relative;
+  cursor: help;
+}
+
+.hover-tip .hover-tip-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  max-width: 260px;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(var(--gold-rgb), 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.hover-tip:hover .hover-tip-bubble,
+.hover-tip:focus-visible .hover-tip-bubble {
+  opacity: 1;
+  visibility: visible;
+}
+

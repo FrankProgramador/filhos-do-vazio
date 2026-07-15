@@ -73,6 +73,15 @@ export async function createDiceEngine(
     assetPath: '/dice-box/',
     theme_material: config.material ?? 'plastic',
     theme_colorset: config.colorset ?? 'white',
+    // Precisa ser uma string explícita, nunca deixar a lib cair no default dela: o
+    // `DiceColors.getColorSet()` da lib MUTA em memória o preset compartilhado (ex:
+    // `eo.white`), trocando `texture: "none"` (string) por um objeto na primeira
+    // chamada. Toda inicialização seguinte (StrictMode double-effect, resize do
+    // Dice3D recriando o motor, nova navegação) lê esse objeto corrompido de volta e
+    // monta uma URL de textura tipo "textures/[object Object].webp" (404). Passar
+    // `theme_texture` explicitamente aqui garante que a lib sempre usa ESSA string,
+    // nunca o valor (possivelmente corrompido) do preset cacheado.
+    theme_texture: 'none',
     strength: config.strength ?? 1,
     gravity_multiplier: config.gravityMultiplier ?? 400,
     onRollComplete: () => {},
