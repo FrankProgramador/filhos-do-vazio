@@ -150,7 +150,7 @@ export function DiceResultModal({ rolls, resultText, onClose }: { rolls: number[
               {successes} sucesso{successes !== 1 ? 's' : ''}
             </p>
             {resultText && (
-              <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text)', marginBottom: '1.25rem' }}>
+              <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text)', marginBottom: '1.25rem', whiteSpace: 'pre-line' }}>
                 {resultText}
               </p>
             )}

@@ -78,6 +78,12 @@ export type Item = {
   is_consumable: boolean
   type: 'weapon' | 'armor' | 'shield' | 'tool' | 'consumable' | 'accessory' | 'other'
   image: string | null
+  /** Dano concedido no 1º acerto de um ataque com essa arma (acertos extras somam +1 cada). */
+  base_damage: number | null
+  /** Redução de dano concedida no 1º acerto de um bloqueio com esse escudo (acertos extras somam +1 cada). */
+  block_value: number | null
+  /** Ocupa mão principal + auxiliar — equipar aqui desequipa (e trava) a auxiliar. */
+  is_two_handed: boolean
 }
 
 export type EquipmentPackage = {
@@ -320,6 +326,14 @@ export type Ability = {
   target_filter: AbilityTargetFilterValue
   cooldown_base: number | null
   steps: AbilityStep[]
+  /** Atributo cujo valor determina a quantidade base de dados na rolagem — toda rolagem exige um. */
+  atributo: keyof Atributos | null
+  /** Recurso gasto no Esforço (dados extra); null = Esforço não disponível pra essa habilidade. */
+  resource: GameResource | null
+  /** Se true, resolvida com uma arma/escudo equipado na mão relevante usa o dano/bloqueio base do item em vez do baseline desarmado. */
+  usa_dano_arma: boolean
+  /** true pras habilidades concedidas automaticamente a todo personagem (ex: Ataque Desarmado). */
+  is_innate: boolean
 }
 
 export type CharSheet = {
@@ -353,7 +367,16 @@ export type CharacterTrait = GameTrait & {
 }
 
 export type CharacterItem = Item & {
-  pivot: { quantity: number; durability_remaining: number | null; is_equipped: boolean }
+  pivot: { quantity: number; durability_remaining: number | null; is_equipped: boolean; slot: string | null }
+}
+
+/** Um `actor_resource` (current/max persistido) do personagem — Coração, Estamina, Alma, Deslocamento, Fome. */
+export type CharacterResourceEntry = {
+  id: number
+  resource_id: number
+  base: number
+  current: number
+  resource: GameResource
 }
 
 export type Character = Atributos & {
@@ -376,6 +399,8 @@ export type Character = Atributos & {
   trilha: Trilha
   traits: CharacterTrait[]
   items: CharacterItem[]
+  abilities: Ability[]
+  resources: CharacterResourceEntry[]
 }
 
 // ── API ───────────────────────────────────────────────────────────────────
@@ -410,6 +435,36 @@ export function fetchCharacter(id: number | string, token: string | null): Promi
 
 export function fetchTrilhas(): Promise<Trilha[]> {
   return apiFetch<Trilha[]>('/api/trilhas')
+}
+
+/**
+ * Custo em Estamina/Alma/Coração (o que a habilidade usar) de comprar dados extra no
+ * Esforço — progressão triangular: nível 1 custa 1, nível 2 mais 2 (total 3), nível 3
+ * mais 3 (total 6)... Mesma fórmula de `ArenaRules::triangularCost` no backend.
+ */
+export function triangularCost(diceCount: number): number {
+  return (diceCount * (diceCount + 1)) / 2
+}
+
+/** Ajusta o valor atual de um recurso (Coração/Estamina/Alma/Deslocamento/Fome) — clicar num pip, gastar Esforço, etc. */
+export function updateCharacterResource(characterId: number, slug: string, current: number, token: string | null): Promise<Character> {
+  return apiFetch<Character>(`/api/characters/${characterId}/resources/${slug}`, {
+    method: 'PATCH', body: JSON.stringify({ current }),
+  }, token)
+}
+
+/** Equipa (slot != null) ou desequipa (slot = null) um item num slot da ficha. */
+export function updateCharacterItemSlot(characterId: number, itemId: number, slot: string | null, token: string | null): Promise<Character> {
+  return apiFetch<Character>(`/api/characters/${characterId}/items/${itemId}/slot`, {
+    method: 'PATCH', body: JSON.stringify({ slot }),
+  }, token)
+}
+
+/** Ajusta quantas refeições do dia já foram consumidas (0..sustento_maximo). */
+export function updateCharacterSustento(characterId: number, sustento: number, token: string | null): Promise<Character> {
+  return apiFetch<Character>(`/api/characters/${characterId}`, {
+    method: 'PATCH', body: JSON.stringify({ sustento }),
+  }, token)
 }
 
 // ── Cálculo (espelha Character::calculateAttributes/calculateSustentoSpent no backend) ──

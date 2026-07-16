@@ -16,6 +16,7 @@ function buildSheetData(character: Character): CharacterSheetData {
   }
 
   return {
+    id: character.id,
     name: character.name,
     avatar: character.avatar,
     age: character.age,
@@ -29,6 +30,8 @@ function buildSheetData(character: Character): CharacterSheetData {
     atributos,
     traits: character.traits,
     items: character.items,
+    abilities: character.abilities,
+    resources: character.resources,
     appearance: character.appearance,
     story: character.story,
   }

@@ -73,7 +73,14 @@ const EMPTY_STEP = (isElse: boolean, order: number): AbilityStepPayload => ({
 const EMPTY: AbilityPayload = {
   name: '', slug: '', description: '', icon: '', is_passive: false, is_hidden: false, display_order: 0,
   range: null, target_type: 'self', target_filter: 'any', cooldown_base: null,
+  atributo: null, resource_id: null, usa_dano_arma: false, is_innate: false,
   steps: [],
+}
+
+type AtributoRolavel = 'poder' | 'graca' | 'casca' | 'saber'
+const ATRIBUTOS: AtributoRolavel[] = ['poder', 'graca', 'casca', 'saber']
+const ATRIBUTO_LABELS: Record<AtributoRolavel, string> = {
+  poder: 'Poder', graca: 'Graça', casca: 'Casca', saber: 'Saber',
 }
 
 function mapConditionToPayload(sc: StepCondition): StepConditionPayload {
@@ -418,6 +425,10 @@ export default function AdminHabilidadesPage() {
       target_type: a.target_type,
       target_filter: a.target_filter,
       cooldown_base: a.cooldown_base,
+      atributo: a.atributo,
+      resource_id: a.resource?.id ?? null,
+      usa_dano_arma: a.usa_dano_arma,
+      is_innate: a.is_innate,
       steps: a.steps.map(mapStepToPayload),
     })
     setError(null)
@@ -500,6 +511,18 @@ export default function AdminHabilidadesPage() {
                 {TARGET_FILTERS.map(f => <option key={f} value={f}>{TARGET_FILTER_LABELS[f]}</option>)}
               </Select>
             </Field>
+            <Field label="Atributo (rolagem)">
+              <Select value={form.atributo ?? ''} onChange={e => setForm({ ...form, atributo: e.target.value ? e.target.value as AtributoRolavel : null })}>
+                <option value="">— nenhum —</option>
+                {ATRIBUTOS.map(a => <option key={a} value={a}>{ATRIBUTO_LABELS[a]}</option>)}
+              </Select>
+            </Field>
+            <Field label="Recurso do Esforço">
+              <Select value={form.resource_id ?? ''} onChange={e => setForm({ ...form, resource_id: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">— sem Esforço —</option>
+                {resources.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </Select>
+            </Field>
             <div className="flex items-center gap-4" style={{ paddingTop: '1.5rem' }}>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_passive" checked={form.is_passive} onChange={e => setForm({ ...form, is_passive: e.target.checked })} />
@@ -508,6 +531,16 @@ export default function AdminHabilidadesPage() {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_hidden" checked={form.is_hidden} onChange={e => setForm({ ...form, is_hidden: e.target.checked })} />
                 <label htmlFor="is_hidden" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Oculta</label>
+              </div>
+            </div>
+            <div className="flex items-center gap-4" style={{ paddingTop: '0.5rem' }}>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="usa_dano_arma" checked={form.usa_dano_arma} onChange={e => setForm({ ...form, usa_dano_arma: e.target.checked })} />
+                <label htmlFor="usa_dano_arma" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Usa dano/bloqueio da arma equipada</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="is_innate" checked={form.is_innate} onChange={e => setForm({ ...form, is_innate: e.target.checked })} />
+                <label htmlFor="is_innate" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Inata (todo personagem já tem)</label>
               </div>
             </div>
             <div className="md:col-span-2">

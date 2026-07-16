@@ -1,10 +1,14 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchMyDiceSkins, type Atributos, type GameTrait, type Item, type OwnedDiceSkin, type Size, type Trilha, type TraitRarity } from '@/app/lib/gameData'
+import {
+  fetchMyDiceSkins, triangularCost, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
+  type Ability, type Atributos, type CharacterResourceEntry, type GameTrait, type Item, type OwnedDiceSkin,
+  type Size, type Trilha, type TraitRarity,
+} from '@/app/lib/gameData'
 import { useAuth } from '@/app/lib/auth-context'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
-import { DICE_APPEARANCE_DEFAULT } from '@/app/painel/jogo/shared'
+import { DICE_APPEARANCE_DEFAULT, SUCCESS_THRESHOLD } from '@/app/painel/jogo/shared'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
 
 /**
@@ -12,16 +16,21 @@ import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
  * quanto o resumo da criação (`Summary.tsx`) conseguem montar — a primeira a
  * partir de um `Character` persistido, a segunda a partir do rascunho ainda em
  * memória. O componente em si não sabe se o personagem já existe ou não.
+ *
+ * `id`/`resources`/`abilities` são opcionais porque o rascunho de criação não tem
+ * nada disso ainda (personagem nem foi salvo) — quando ausentes, os marcadores de
+ * recurso e os slots de equipamento ficam só locais (sem chamar a API).
  */
 export type CharacterSheetTrait = GameTrait & {
   pivot: { quantity: number; is_extra: boolean }
 }
 
 export type CharacterSheetItem = Item & {
-  pivot: { quantity: number; is_equipped: boolean; durability_remaining: number | null }
+  pivot: { quantity: number; is_equipped: boolean; durability_remaining: number | null; slot: string | null }
 }
 
 export interface CharacterSheetData {
+  id?: number
   name: string
   avatar: string | null
   age?: number | string | null
@@ -35,6 +44,8 @@ export interface CharacterSheetData {
   atributos: Atributos
   traits: CharacterSheetTrait[]
   items: CharacterSheetItem[]
+  abilities?: Ability[]
+  resources?: CharacterResourceEntry[]
   appearance?: string | null
   story?: string | null
 }
@@ -54,8 +65,11 @@ const PRIMARY_ATTRS: Array<[keyof Atributos, string, string]> = [
   ['saber', 'Saber', '📖'],
 ]
 
+const ATTR_LABELS: Record<string, string> = { poder: 'Poder', graca: 'Graça', casca: 'Casca', saber: 'Saber' }
+
 // Deslocamento não é mais derivado de Graça — agora é uma base fixa (5),
-// independente de atributos, até existir alguma mecânica que o altere.
+// espelhada em Character::DESLOCAMENTO_BASE no backend. Usada só como fallback
+// enquanto o actor_resource "deslocamento" não existir pra esse personagem.
 const DESLOCAMENTO_BASE = 5
 
 const SOCIAL_ATTRS: Array<[keyof Atributos, string, string]> = [
@@ -92,9 +106,38 @@ const ITEM_TYPE_ICON: Record<Item['type'], string> = {
   weapon: '🗡️', armor: '👕', shield: '🛡️', tool: '🔧', consumable: '🧪', accessory: '💍', other: '🎒',
 }
 
-function AttrCard({ icon, label, value }: { icon: string; label: string; value: number }) {
+// Ataque Desarmado é a única habilidade inata real (concedida a todo personagem no
+// backend). Esse fallback só existe pro caso de o personagem ainda não ter sido
+// migrado/backfillado — evita quebrar a ficha antes disso.
+const FALLBACK_UNARMED_ABILITY: Ability = {
+  id: -1, name: 'Ataque Desarmado', slug: 'ataque-desarmado',
+  description: 'Ataca o oponente com as mãos nuas. O dano é a quantidade de acertos − Casca do oponente.',
+  icon: '👊', is_passive: false, is_hidden: false, display_order: 0, range: null,
+  target_type: 'single', target_filter: 'enemy', cooldown_base: null, steps: [],
+  atributo: 'poder', resource: null, usa_dano_arma: true, is_innate: true,
+}
+
+function findResourceEntry(resources: CharacterResourceEntry[], slug: string | null | undefined): CharacterResourceEntry | null {
+  if (!slug) return null
+  return resources.find(r => r.resource.slug === slug) ?? null
+}
+
+/** current/max de um recurso pelo slug — cai pro `fallback` (ex: atributo calculado, base fixa) enquanto o personagem não tiver esse actor_resource ainda. */
+function resourceValue(resources: CharacterResourceEntry[], slug: string, fallback: number): { current: number; max: number } {
+  const entry = findResourceEntry(resources, slug)
+  return entry ? { current: entry.current, max: entry.base } : { current: fallback, max: fallback }
+}
+
+// Clicável: dispara um Teste do atributo (rola `value` d6, conta sucessos no modal).
+function AttrCard({ icon, label, value, onClick }: { icon: string; label: string; value: number; onClick?: () => void }) {
   return (
-    <div style={{ padding: '0.85rem 0.9rem', background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.18)', borderRadius: 10 }}>
+    <div
+      onClick={onClick}
+      style={{
+        padding: '0.85rem 0.9rem', background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.18)', borderRadius: 10,
+        cursor: onClick ? 'pointer' : undefined,
+      }}
+    >
       <div className="flex items-center gap-1.5" style={{ marginBottom: '0.5rem' }}>
         <span style={{ fontSize: '0.9rem' }}>{icon}</span>
         <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>
@@ -124,13 +167,12 @@ function IconRow({ icon, label, value }: { icon: string; label: string; value: n
   )
 }
 
-// Placeholder até existir controle real de recursos em campanha — mostra
-// atual/máximo com pips clicáveis (cheio/vazio). Estado é só local por enquanto.
-function VitalBox({ icon, emptyIcon, label, max, color, colorRgb }: {
-  icon: string; emptyIcon: string; label: string; max: number; color: string; colorRgb: string
+// Coração/Estamina/Alma/Deslocamento — atual/máximo com pips clicáveis. Controlado
+// pelo pai (que persiste via PATCH /resources quando o personagem já existe).
+function VitalBox({ icon, emptyIcon, label, current, max, color, colorRgb, onToggle }: {
+  icon: string; emptyIcon: string; label: string; current: number; max: number; color: string; colorRgb: string
+  onToggle: (next: number) => void
 }) {
-  const [current, setCurrent] = useState(max)
-
   return (
     <div style={{ flex: '1 1 220px', padding: '0.8rem 1rem', background: 'var(--card)', border: `1px solid rgba(${colorRgb},0.35)`, borderRadius: 10 }}>
       <div className="flex items-center gap-2" style={{ marginBottom: '0.55rem' }}>
@@ -151,7 +193,7 @@ function VitalBox({ icon, emptyIcon, label, max, color, colorRgb }: {
             <button
               key={i}
               type="button"
-              onClick={() => setCurrent(i + 1 === current ? i : i + 1)}
+              onClick={() => onToggle(i + 1 === current ? i : i + 1)}
               aria-label={`${label} ${i + 1} de ${max}`}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '0.9rem' }}
             >
@@ -212,9 +254,8 @@ function HoverTip({ children, title, detail }: { children: ReactNode; title: str
   )
 }
 
-// Estágios de fome — placeholder de UI só, marcado manualmente por enquanto (não
-// há mecânica de consumo de Sustento automática ainda). Índice do array = nº de
-// marcadores preenchidos (0 = Saciado, 4 = Inanição).
+// Estágios de fome — índice = nº de marcadores preenchidos (0 = Saciado, 4 = Inanição).
+// O recurso "fome" persiste esse índice como `current` (max sempre 4).
 const HUNGER_STAGES = [
   { name: 'Saciado', title: 'Está bem alimentado.', detail: null as string | null },
   { name: 'Com Fome', title: 'Começa a dar sinais. O estômago ronca.', detail: 'A fome faz recuperar menos 1 de Estamina por turno.' },
@@ -254,12 +295,16 @@ function VitalPipHalf({ icon, primary, primarySuffix, label, color, current, max
   )
 }
 
-function SustainAsidePanel({ sustentoAtual, sustentoMaximo, deslocamento }: {
-  sustentoAtual: number; sustentoMaximo: number; deslocamento: number
+function SustainAsidePanel({
+  sustento, sustentoMax, onSustentoToggle,
+  hunger, onHungerToggle,
+  deslocamento, deslocamentoMax, onDeslocamentoToggle,
+}: {
+  sustento: number; sustentoMax: number; onSustentoToggle: (next: number) => void
+  hunger: number; onHungerToggle: (next: number) => void
+  deslocamento: number; deslocamentoMax: number; onDeslocamentoToggle: (next: number) => void
 }) {
-  const [sustento, setSustento] = useState(Math.min(sustentoAtual, sustentoMaximo))
-  const [hunger, setHunger] = useState(0)
-  const stage = HUNGER_STAGES[hunger]
+  const stage = HUNGER_STAGES[Math.min(hunger, HUNGER_MAX)]
   const hungerColor = hunger === 0 ? 'var(--text-muted)' : hunger >= HUNGER_MAX ? 'var(--error)' : 'var(--gold)'
   const hungerColorRgb = hunger >= HUNGER_MAX ? 'var(--error-rgb)' : 'var(--gold-rgb)'
 
@@ -274,13 +319,13 @@ function SustainAsidePanel({ sustentoAtual, sustentoMaximo, deslocamento }: {
         <VitalPipHalf
           icon="🍽️"
           primary={`${sustento}`}
-          primarySuffix={`/${sustentoMaximo}`}
+          primarySuffix={`/${sustentoMax}`}
           label="Refeições"
           color="var(--gold)"
           current={sustento}
-          max={sustentoMaximo}
+          max={sustentoMax}
           filledChar="🍞"
-          onToggle={setSustento}
+          onToggle={onSustentoToggle}
         />
 
         <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(var(--gold-rgb),0.15)', margin: '0 0.9rem' }} />
@@ -294,7 +339,7 @@ function SustainAsidePanel({ sustentoAtual, sustentoMaximo, deslocamento }: {
           </div>
           <HoverTip title={stage.title} detail={stage.detail}>
             <div className="flex items-center gap-1.5">
-              <PipRow current={hunger} max={HUNGER_MAX} onToggle={setHunger} filledChar="😫" size="0.95rem" />
+              <PipRow current={hunger} max={HUNGER_MAX} onToggle={onHungerToggle} filledChar="😫" size="0.95rem" />
               <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: hungerColor }}>
                 {stage.name}
               </span>
@@ -305,34 +350,11 @@ function SustainAsidePanel({ sustentoAtual, sustentoMaximo, deslocamento }: {
 
       {/* Deslocamento — mesmo modelo visual de Coração/Estamina/Alma (VitalBox) */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <VitalBox icon="👣" emptyIcon="⚪" label="Deslocamento" max={deslocamento} color="var(--gold)" colorRgb="var(--gold-rgb)" />
+        <VitalBox icon="👣" emptyIcon="⚪" label="Deslocamento" current={deslocamento} max={deslocamentoMax} color="var(--gold)" colorRgb="var(--gold-rgb)" onToggle={onDeslocamentoToggle} />
       </div>
     </div>
   )
 }
-
-// Itens fixos usados como exemplo nos slots de Cabeça/Corpo enquanto não existe
-// equipamento inicial real vindo da API. Puramente ilustrativo.
-const MOCK_HEAD_ITEM: CharacterSheetItem = {
-  id: -1, name: 'Máscara Comum', slug: 'mascara-comum-mock',
-  description: 'Máscara simples de couro, cobre o rosto.',
-  weight: 0.5, quality: null, base_price: 0, durability: null, is_consumable: false, type: 'accessory', image: null,
-  pivot: { quantity: 1, is_equipped: true, durability_remaining: null },
-}
-
-const MOCK_BODY_ITEM: CharacterSheetItem = {
-  id: -2, name: 'Vestes Comuns', slug: 'vestes-comuns-mock',
-  description: 'Vestes de tecido leve, com bolsos e compartimentos reforçados.',
-  weight: 1.5, quality: null, base_price: 0, durability: null, is_consumable: false, type: 'armor', image: null,
-  pivot: { quantity: 1, is_equipped: true, durability_remaining: null },
-}
-
-// Quantos slots de acesso rápido (bolsos/cinto) cada peça de corpo libera —
-// hardcoded por enquanto; deveria vir do item quando essa mecânica existir de verdade.
-const QUICK_SLOTS_BY_BODY: Record<string, number> = {
-  [MOCK_BODY_ITEM.slug]: 2,
-}
-const QUICK_SLOTS_MAX = 6
 
 // Linha de slot de equipamento (cabeça/corpo/mãos): ícone + rótulo + select +
 // peso com selo de cadeado (fechado = ocupado, aberto = vazio — só decorativo).
@@ -369,9 +391,18 @@ function EquipSlotRow({ icon, label, item, options, onChange, disabled }: {
         >
           <option value="">— vazio —</option>
           {options.map(o => (
-            <option key={o.id} value={o.id}>{o.name}</option>
+            <option key={o.id} value={o.id}>
+              {o.name}{o.base_damage != null ? ` (dano ${o.base_damage})` : ''}{o.block_value != null ? ` (bloqueio ${o.block_value})` : ''}
+            </option>
           ))}
         </select>
+      )}
+
+      {item && (item.base_damage != null || item.block_value != null) && (
+        <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', color: 'var(--gold)' }}>
+          {item.base_damage != null && <>⚔️{item.base_damage}</>}
+          {item.block_value != null && <>🛡️{item.block_value}</>}
+        </span>
       )}
 
       <span style={{ width: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', color: 'var(--text-muted)' }}>
@@ -424,27 +455,30 @@ function QuickSlotBox({ index, item, options, onChange, disabled }: {
   )
 }
 
-// Slots de equipamento (cabeça, corpo, mãos, acesso rápido) — conceito de UI só,
-// estado local, sem persistência. Mão auxiliar dupla existe mas fica desabilitada
-// até a mecânica de duas mãos existir. Slots de acesso rápido liberados dependem
-// da peça de corpo equipada.
-function EquipmentPanel({ items, poder }: { items: CharacterSheetItem[]; poder: number }) {
-  const [head, setHead] = useState<CharacterSheetItem | null>(MOCK_HEAD_ITEM)
-  const [body, setBody] = useState<CharacterSheetItem | null>(MOCK_BODY_ITEM)
-  const [mainHand, setMainHand] = useState<CharacterSheetItem | null>(null)
-  const [quickSlots, setQuickSlots] = useState<Array<CharacterSheetItem | null>>(() => Array(QUICK_SLOTS_MAX).fill(null))
+const QUICK_SLOTS_MAX = 6
 
-  const quickEnabled = QUICK_SLOTS_BY_BODY[body?.slug ?? ''] ?? 0
-  const pool = [MOCK_HEAD_ITEM, MOCK_BODY_ITEM, ...items]
-  const assigned = [head, body, mainHand, ...quickSlots]
+// Slots de equipamento (cabeça, corpo, mãos, acesso rápido) — persistido via
+// pivot.slot em character_items. Mão auxiliar 2/3 seguem travadas (placeholder de
+// criaturas com mais braços). Quantos slots de Acesso Rápido ficam ativos deveria
+// depender da peça de corpo equipada, mas isso ainda não tem coluna no Item —
+// por enquanto todos os 6 ficam sempre habilitados.
+function EquipmentPanel({ items, poder, onAssignSlot }: {
+  items: CharacterSheetItem[]; poder: number
+  onAssignSlot: (slot: string, itemId: number | null) => void
+}) {
+  const bySlot = (slot: string) => items.find(i => i.pivot.slot === slot) ?? null
+  const head = bySlot('head')
+  const body = bySlot('body')
+  const mainHand = bySlot('main_hand')
+  const offHand1 = bySlot('off_hand_1')
+  const quickSlots = Array.from({ length: QUICK_SLOTS_MAX }, (_, i) => bySlot(`quick_${i + 1}`))
+  const quickEnabled = QUICK_SLOTS_MAX
+
+  const assigned = [head, body, mainHand, offHand1, ...quickSlots]
   const usedIds = new Set(assigned.filter((i): i is CharacterSheetItem => i !== null).map(i => i.id))
 
   function optionsFor(current: CharacterSheetItem | null) {
-    return pool.filter(i => i.id === current?.id || !usedIds.has(i.id))
-  }
-
-  function setQuickSlot(index: number, value: CharacterSheetItem | null) {
-    setQuickSlots(prev => prev.map((v, i) => (i === index ? value : v)))
+    return items.filter(i => i.id === current?.id || !usedIds.has(i.id))
   }
 
   const equippedWeight = assigned.reduce((sum, i) => sum + (i ? Number(i.weight) : 0), 0)
@@ -466,10 +500,10 @@ function EquipmentPanel({ items, poder }: { items: CharacterSheetItem[]; poder: 
       </div>
 
       <div className="flex flex-col gap-2" style={{ marginTop: '0.25rem' }}>
-        <EquipSlotRow label="Cabeça" icon="🎭" item={head} options={optionsFor(head)} onChange={setHead} />
-        <EquipSlotRow label="Corpo" icon="👕" item={body} options={optionsFor(body)} onChange={setBody} />
-        <EquipSlotRow label="Mão principal" icon="🗡️" item={mainHand} options={optionsFor(mainHand)} onChange={setMainHand} />
-        <EquipSlotRow label="Mão auxiliar 1" icon="🛡️" item={null} options={[]} onChange={() => {}} disabled />
+        <EquipSlotRow label="Cabeça" icon="🎭" item={head} options={optionsFor(head)} onChange={i => onAssignSlot('head', i?.id ?? null)} />
+        <EquipSlotRow label="Corpo" icon="👕" item={body} options={optionsFor(body)} onChange={i => onAssignSlot('body', i?.id ?? null)} />
+        <EquipSlotRow label="Mão principal" icon="🗡️" item={mainHand} options={optionsFor(mainHand)} onChange={i => onAssignSlot('main_hand', i?.id ?? null)} />
+        <EquipSlotRow label="Mão auxiliar 1" icon="🛡️" item={offHand1} options={optionsFor(offHand1)} onChange={i => onAssignSlot('off_hand_1', i?.id ?? null)} disabled={Boolean(mainHand?.is_two_handed)} />
         <EquipSlotRow label="Mão auxiliar 2" icon="🛡️" item={null} options={[]} onChange={() => {}} disabled />
         <EquipSlotRow label="Mão auxiliar 3" icon="🛡️" item={null} options={[]} onChange={() => {}} disabled />
       </div>
@@ -490,7 +524,7 @@ function EquipmentPanel({ items, poder }: { items: CharacterSheetItem[]; poder: 
               index={i}
               item={slotItem}
               options={optionsFor(slotItem)}
-              onChange={value => setQuickSlot(i, value)}
+              onChange={value => onAssignSlot(`quick_${i + 1}`, value?.id ?? null)}
               disabled={i >= quickEnabled}
             />
           ))}
@@ -500,54 +534,68 @@ function EquipmentPanel({ items, poder }: { items: CharacterSheetItem[]; poder: 
   )
 }
 
-// Ações base sempre disponíveis (desarmado, arma da mão principal, bloqueio com
-// escudo da mão auxiliar) — não vêm da API ainda, são fixas por enquanto.
-// Habilidades de trilha (character.trilha.abilities) aparecem à parte, como
-// cards simples, já que não têim "uso em dados" estruturado pra rolar.
-const BASE_ABILITIES = [
-  {
-    slug: 'ataque-desarmado',
-    name: 'Ataque Desarmado',
-    icon: '👊',
-    tipo: 'Ataque',
-    usoLabel: 'Poder em dados',
-    description: 'Ataca o oponente com as mãos nuas. O dano é a quantidade de acertos − Casca do oponente.',
-  },
-  {
-    slug: 'ataque-mao-principal',
-    name: 'Ataque — Mão Principal',
-    icon: '🗡️',
-    tipo: 'Ataque',
-    usoLabel: 'Poder em dados',
-    description: 'Usa a arma da mão principal. 1 acerto confere o dano base da arma, os demais aumentam o dano em 1. Reduz a Casca do dano; o dano mínimo em caso de acerto é 1.',
-  },
-  {
-    slug: 'bloqueio-mao-auxiliar',
-    name: 'Bloqueio — Mão Auxiliar',
-    icon: '🛡️',
-    tipo: 'Bloqueio',
-    usoLabel: 'Poder em dados',
-    description: 'Usa o escudo pra mitigar o dano do oponente. Um acerto concede o bloqueio base, os demais +1 de redução de dano.',
-  },
-] as const
-
-// Níveis de Esforço: cada nível adiciona 1 dado à rolagem, custando Estamina em
-// progressão triangular (1, 3, 6, 10 — n·(n+1)/2). Placeholder de UI só, rola
-// dados aleatórios localmente, não desconta a Estamina de verdade ainda.
+// Níveis de Esforço: cada nível adiciona 1 dado à rolagem, custando o recurso da
+// habilidade em progressão triangular (1, 3, 6, 10 — n·(n+1)/2), sempre a mesma
+// tabela indiferente de qual recurso é gasto (Estamina/Alma/Coração/...).
 const EFFORT_LEVELS = [1, 2, 3, 4]
 
-function AbilityCard({ icon, name, tipo, usoLabel, baseDice, description, buildAppearances }: {
-  icon: string; name: string; tipo: string; usoLabel: string; baseDice: number; description: string
+function AbilityCard({
+  icon, name, tipo, atributo, atributos, resourceEntry, description, baseValue, resultLabel, characterName,
+  minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource,
+}: {
+  icon: string; name: string; tipo: string
+  atributo: keyof Atributos | null
+  atributos: Atributos
+  resourceEntry: CharacterResourceEntry | null
+  description: string
+  /** Dano/bloqueio base do item equipado (quando a ação vem de uma arma/escudo) — usado pra calcular o resultado da rolagem. */
+  baseValue?: number | null
+  resultLabel?: 'dano' | 'bloqueio' | null
+  characterName: string
+  /** Nível mínimo de Esforço permitido agora — usado pelos ataques de mão pra forçar
+   * escalada quando a OUTRA mão já atacou nesse turno (ver `onEffortUsed`). 1 = sem restrição. */
+  minEffortLevel?: number
+  /** Avisa o pai qual nível de Esforço acabou de ser usado — só as ações de ATAQUE de
+   * mão passam isso (bloqueio não conta), pra travar essa mão e escalar a outra. */
+  onEffortUsed?: (level: number) => void
+  /** true quando essa mão já atacou nesse turno — cada mão só ataca 1x por turno. */
+  locked?: boolean
   buildAppearances: (count: number) => DiceAppearance[]
+  onSpendResource: (resourceSlug: string, newCurrent: number) => void
 }) {
-  const [roll, setRoll] = useState<{ level: number; dice: number[] } | null>(null)
+  const [activeLevel, setActiveLevel] = useState<number | null>(null)
   const { showDiceRoll } = useDiceStageContext()
 
+  const baseDice = atributo ? Math.max(1, Math.round(atributos[atributo])) : 1
+  const usoLabel = atributo ? `${ATTR_LABELS[atributo] ?? atributo} em dados` : 'dados'
+
+  // O card não mostra mais o resultado da rolagem — isso tudo vai pro modal dos
+  // dados 3D (showDiceRoll já conta os sucessos sozinho a partir dos valores;
+  // aqui só montamos o texto: quem rolou o quê, a descrição (se tiver) e o
+  // dano/bloqueio calculado (se a ação tiver um `baseValue`, ex: arma equipada).
   function rollEffort(level: number) {
     const diceCount = Math.max(1, baseDice + (level - 1))
     const dice = Array.from({ length: diceCount }, () => 1 + Math.floor(Math.random() * 6))
-    setRoll({ level, dice })
-    showDiceRoll(dice, name, buildAppearances(dice.length))
+    const successes = dice.filter(d => d >= SUCCESS_THRESHOLD).length
+    const total = baseValue != null ? (successes > 0 ? baseValue + (successes - 1) : 0) : null
+
+    setActiveLevel(level)
+
+    const lines = [`${characterName} rolou ${name}`]
+    if (description) lines.push(description)
+    if (total !== null) {
+      const extra = successes > 1 ? ` + ${successes - 1}` : ''
+      lines.push(`${resultLabel === 'bloqueio' ? 'Bloqueio' : 'Dano'} base ${baseValue}${extra} = ${total} ${resultLabel === 'bloqueio' ? 'de bloqueio' : 'de dano'}`)
+    }
+
+    showDiceRoll(dice, lines.join('\n'), buildAppearances(dice.length))
+
+    if (resourceEntry) {
+      const cost = triangularCost(level)
+      onSpendResource(resourceEntry.resource.slug, Math.max(0, resourceEntry.current - cost))
+    }
+
+    onEffortUsed?.(level)
   }
 
   return (
@@ -568,53 +616,128 @@ function AbilityCard({ icon, name, tipo, usoLabel, baseDice, description, buildA
         {description}
       </p>
 
-      <div>
-        <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-          Esforço
+      {locked ? (
+        <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', padding: '0.4rem 0.6rem', textAlign: 'center', border: '1px dashed rgba(var(--gold-rgb),0.2)', borderRadius: 6 }}>
+          Já atacou nesse turno
         </p>
-        <div className="flex gap-1.5 flex-wrap">
-          {EFFORT_LEVELS.map(level => {
-            const cost = (level * (level + 1)) / 2
-            const active = roll?.level === level
-            return (
-              <button
-                key={level}
-                type="button"
-                onClick={() => rollEffort(level)}
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                  padding: '0.35rem 0.55rem', borderRadius: 6, cursor: 'pointer',
-                  border: `1px solid rgba(var(--gold-rgb),${active ? 0.6 : 0.25})`,
-                  background: active ? 'rgba(var(--gold-rgb),0.16)' : 'var(--bg-secondary)',
-                }}
-              >
-                <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text)' }}>{level}</span>
-                <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', color: 'var(--gold)' }}>⚡{cost}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {roll && (
-        <div style={{ padding: '0.5rem 0.6rem', background: 'var(--bg-secondary)', border: '1px solid rgba(var(--gold-rgb),0.15)', borderRadius: 6 }}>
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.52rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            Rolagem ({roll.dice.length}d6)
-          </span>
-          <div style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', marginTop: '0.15rem' }}>
-            {roll.dice.join(' · ')}
+      ) : resourceEntry ? (
+        <div>
+          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+            Esforço ({resourceEntry.resource.name}: {resourceEntry.current}/{resourceEntry.base})
+            {minEffortLevel > 1 && <><br />Outra mão já atacou — mín. nível {minEffortLevel}</>}
+          </p>
+          <div className="flex gap-1.5 flex-wrap">
+            {EFFORT_LEVELS.map(level => {
+              const cost = triangularCost(level)
+              const active = activeLevel === level
+              const usable = resourceEntry.current >= cost && level >= minEffortLevel
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => rollEffort(level)}
+                  disabled={!usable}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    padding: '0.35rem 0.55rem', borderRadius: 6, cursor: usable ? 'pointer' : 'not-allowed',
+                    border: `1px solid rgba(var(--gold-rgb),${active ? 0.6 : 0.25})`,
+                    background: active ? 'rgba(var(--gold-rgb),0.16)' : 'var(--bg-secondary)',
+                    opacity: usable ? 1 : 0.4,
+                  }}
+                >
+                  <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text)' }}>{level}</span>
+                  <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', color: 'var(--gold)' }}>⚡{cost}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => rollEffort(1)}
+          disabled={minEffortLevel > 1}
+          title={minEffortLevel > 1 ? 'Outra mão já atacou nesse turno — precisaria de Esforço pra atacar de novo.' : undefined}
+          style={{
+            fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text)',
+            padding: '0.4rem 0.6rem', borderRadius: 6, cursor: minEffortLevel > 1 ? 'not-allowed' : 'pointer',
+            border: '1px solid rgba(var(--gold-rgb),0.25)', background: 'var(--bg-secondary)',
+            opacity: minEffortLevel > 1 ? 0.4 : 1,
+          }}
+        >
+          Rolar {baseDice}d6
+        </button>
       )}
     </div>
   )
 }
 
+type ResolvedHandAction = {
+  key: string
+  name: string
+  icon: string
+  tipo: string
+  atributo: keyof Atributos | null
+  resourceSlug: string | null
+  description: string
+  baseValue: number | null
+  resultLabel: 'dano' | 'bloqueio' | null
+}
+
+/**
+ * Cada mão tem seu próprio "ataque", resolvido a partir do que está equipado nela:
+ * sem nada → Ataque Desarmado (a habilidade inata); arma → ataque lendo o dano base
+ * dela; escudo → bloqueio lendo o valor de bloqueio dele. `usa_dano_arma=false` na
+ * habilidade desliga essa troca de sabor (fica sempre desarmado, mesmo com item).
+ */
+function resolveHandAction(item: CharacterSheetItem | null, unarmed: Ability, handLabel: string): ResolvedHandAction {
+  if (item && unarmed.usa_dano_arma) {
+    if (item.type === 'shield') {
+      return {
+        key: `hand-${handLabel}-block`,
+        name: `Bloqueio — ${item.name}`,
+        icon: '🛡️',
+        tipo: 'Bloqueio',
+        atributo: unarmed.atributo,
+        resourceSlug: 'estamina',
+        description: `Usa ${item.name} pra mitigar o dano do oponente. Um acerto concede ${item.block_value ?? 0} de bloqueio base, os demais +1 de redução de dano.`,
+        baseValue: item.block_value,
+        resultLabel: 'bloqueio',
+      }
+    }
+
+    return {
+      key: `hand-${handLabel}-weapon`,
+      name: `Ataque — ${item.name}`,
+      icon: '🗡️',
+      tipo: 'Ataque',
+      atributo: unarmed.atributo,
+      resourceSlug: 'estamina',
+      description: `Usa ${item.name}. 1 acerto confere ${item.base_damage ?? 0} de dano, os demais aumentam o dano em 1.`,
+      baseValue: item.base_damage,
+      resultLabel: 'dano',
+    }
+  }
+
+  return {
+    key: `hand-${handLabel}-unarmed`,
+    name: `${unarmed.name} — ${handLabel}`,
+    icon: unarmed.icon ?? '👊',
+    tipo: 'Ataque',
+    baseValue: null,
+    resultLabel: null,
+    atributo: unarmed.atributo,
+    resourceSlug: unarmed.resource?.slug ?? null,
+    description: unarmed.description,
+  }
+}
+
 export default function CharacterSheetCard({ character }: { character: CharacterSheetData }) {
   const trilhaCfg = character.trilha ? TRILHA_TIPO_COLOR[character.trilha.tipo] : null
   const atributos = character.atributos
-
   const { token } = useAuth()
+  const { showDiceRoll } = useDiceStageContext()
+
   const [myDiceSkins, setMyDiceSkins] = useState<OwnedDiceSkin[]>([])
   useEffect(() => {
     fetchMyDiceSkins(token).then(setMyDiceSkins).catch(() => setMyDiceSkins([]))
@@ -630,12 +753,110 @@ export default function CharacterSheetCard({ character }: { character: Character
     })
   }
 
+  // Estado local pra pips (Coração/Estamina/Alma/Deslocamento/Fome) e Sustento —
+  // espelha as props, atualiza otimista no clique, persiste via API só quando o
+  // personagem já existe (character.id). No rascunho de criação fica só local.
+  const [resources, setResources] = useState<CharacterResourceEntry[]>(character.resources ?? [])
+  useEffect(() => setResources(character.resources ?? []), [character.resources])
+
+  const [sustento, setSustento] = useState(character.sustento)
+  useEffect(() => setSustento(character.sustento), [character.sustento])
+
+  function handleResourceToggle(slug: string, next: number) {
+    setResources(prev => prev.map(r => (r.resource.slug === slug ? { ...r, current: next } : r)))
+    if (character.id) {
+      updateCharacterResource(character.id, slug, next, token).catch(err => console.error('Falha ao atualizar recurso', err))
+    }
+  }
+
+  function handleSustentoToggle(next: number) {
+    setSustento(next)
+    if (character.id) {
+      updateCharacterSustento(character.id, next, token).catch(err => console.error('Falha ao atualizar sustento', err))
+    }
+  }
+
+  // Ataque é uma habilidade só, mesmo vindo de mãos diferentes: cada mão só ataca
+  // 1x por turno, e pra atacar com a SEGUNDA mão no mesmo turno é preciso um nível
+  // de Esforço maior que o usado na primeira (atacou com 1 → a outra mão precisa
+  // de 2, etc.). Bloqueio não é ataque, não entra nessa trava. `null` = nenhum
+  // ataque ainda nesse turno, então o próximo pode ser nível 1.
+  const [turnAttackLevel, setTurnAttackLevel] = useState<number | null>(null)
+  const [mainHandAttacked, setMainHandAttacked] = useState(false)
+  const [offHandAttacked, setOffHandAttacked] = useState(false)
+  const minAttackLevel = turnAttackLevel === null ? 1 : turnAttackLevel + 1
+
+  function registerHandAttack(hand: 'main' | 'off' | 'both', level: number) {
+    setTurnAttackLevel(level)
+    if (hand === 'main' || hand === 'both') setMainHandAttacked(true)
+    if (hand === 'off' || hand === 'both') setOffHandAttacked(true)
+  }
+
+  // Botão de teste — trigger de início de turno. Por enquanto só sobe a Estamina
+  // pro máximo e libera os ataques de novo; outros efeitos de turno (fome,
+  // cooldowns...) entram aqui depois.
+  function handleEndTurn() {
+    const estaminaEntry = findResourceEntry(resources, 'estamina')
+    const max = estaminaEntry ? estaminaEntry.base : Math.max(1, Math.round(atributos.estamina))
+    handleResourceToggle('estamina', max)
+    setTurnAttackLevel(null)
+    setMainHandAttacked(false)
+    setOffHandAttacked(false)
+  }
+
+  // Clicar num atributo primário (Poder/Graça/Casca/Saber) faz um Teste dele: rola
+  // o valor do atributo em d6 e só conta sucessos no modal, sem dano/descrição.
+  function handleAttributeTest(key: keyof Atributos, label: string) {
+    const diceCount = Math.max(1, Math.round(atributos[key]))
+    const dice = Array.from({ length: diceCount }, () => 1 + Math.floor(Math.random() * 6))
+    showDiceRoll(dice, `${character.name} rolou Teste de ${label}`, myAppearances(dice.length))
+  }
+
+  // Itens levantados aqui (não dentro do EquipmentPanel) porque a coluna de Ações
+  // também precisa saber o que está equipado nas mãos, pra resolver os ataques.
+  const [items, setItems] = useState<CharacterSheetItem[]>(character.items)
+  useEffect(() => setItems(character.items), [character.items])
+
+  function assignItemSlot(slot: string, newItemId: number | null) {
+    const previousItem = items.find(i => i.pivot.slot === slot) ?? null
+    const newItem = newItemId !== null ? items.find(i => i.id === newItemId) ?? null : null
+    const previousOffHand = slot === 'main_hand' && newItem?.is_two_handed
+      ? items.find(i => i.pivot.slot === 'off_hand_1') ?? null
+      : null
+
+    setItems(prev => prev.map(i => {
+      if (previousItem && i.id === previousItem.id) return { ...i, pivot: { ...i.pivot, slot: null, is_equipped: false } }
+      if (previousOffHand && i.id === previousOffHand.id) return { ...i, pivot: { ...i.pivot, slot: null, is_equipped: false } }
+      if (newItem && i.id === newItem.id) return { ...i, pivot: { ...i.pivot, slot, is_equipped: true } }
+      return i
+    }))
+
+    if (!character.id) return
+    const characterId = character.id
+
+    ;(async () => {
+      try {
+        if (previousItem && previousItem.id !== newItemId) {
+          await updateCharacterItemSlot(characterId, previousItem.id, null, token)
+        }
+        if (previousOffHand && previousOffHand.id !== newItemId) {
+          await updateCharacterItemSlot(characterId, previousOffHand.id, null, token)
+        }
+        if (newItem) {
+          await updateCharacterItemSlot(characterId, newItem.id, slot, token)
+        }
+      } catch (err) {
+        console.error('Falha ao equipar item', err)
+      }
+    })()
+  }
+
   const topLevelTraits = character.traits.filter(t => t.prerequisite_trait_id === null)
   const personalityTraits = topLevelTraits.filter(t => t.rarity === 'personality')
   const otherTraits = topLevelTraits.filter(t => t.rarity !== 'personality')
   const subTraitsByParent = (parentId: number) => character.traits.filter(t => t.prerequisite_trait_id === parentId)
 
-  const totalWeight = character.items.reduce((sum, i) => sum + Number(i.weight) * i.pivot.quantity, 0)
+  const totalWeight = items.reduce((sum, i) => sum + Number(i.weight) * i.pivot.quantity, 0)
 
   // Carga não é mais sublabel de Poder — agora é a capacidade de peso em si
   // (Poder × 2), mostrada como barra de uso no Inventário.
@@ -646,8 +867,46 @@ export default function CharacterSheetCard({ character }: { character: Character
     ? character.trilha.beneficios.split('\n').map(l => l.trim()).filter(Boolean)
     : []
 
+  const coracaoVal = resourceValue(resources, 'coracao', Math.max(1, Math.round(atributos.coracao)))
+  const estaminaVal = resourceValue(resources, 'estamina', Math.max(1, Math.round(atributos.estamina)))
+  const almaVal = resourceValue(resources, 'alma', Math.max(1, Math.round(atributos.alma)))
+  const deslocamentoVal = resourceValue(resources, 'deslocamento', DESLOCAMENTO_BASE)
+  const fomeEntry = findResourceEntry(resources, 'fome')
+  const hunger = fomeEntry ? fomeEntry.current : 0
+  const sustentoMax = Math.max(1, character.sustentoMaximo ?? character.sustento)
+
+  const characterAbilities = character.abilities ?? []
+  const unarmedAbility = characterAbilities.find(a => a.slug === 'ataque-desarmado')
+    ?? characterAbilities.find(a => a.is_innate)
+    ?? FALLBACK_UNARMED_ABILITY
+
+  const mainHandItem = items.find(i => i.pivot.slot === 'main_hand') ?? null
+  const offHandItem = items.find(i => i.pivot.slot === 'off_hand_1') ?? null
+  const isTwoHanded = Boolean(mainHandItem?.is_two_handed)
+
+  const mainHandAction = resolveHandAction(mainHandItem, unarmedAbility, isTwoHanded ? 'Duas Mãos' : 'Mão Principal')
+  const handActions = isTwoHanded ? [mainHandAction] : [mainHandAction, resolveHandAction(offHandItem, unarmedAbility, 'Mão Auxiliar')]
+
+  const otherAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && !a.is_passive)
+  const passiveAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && a.is_passive)
+
   return (
     <div className="flex flex-col gap-5">
+      {/* Botão de teste — dispara o início de turno (por enquanto só restaura a Estamina). */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleEndTurn}
+          style={{
+            fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em',
+            color: 'var(--gold)', padding: '0.5rem 1.1rem', borderRadius: 7, cursor: 'pointer',
+            background: 'rgba(var(--gold-rgb),0.1)', border: '1px solid rgba(var(--gold-rgb),0.35)',
+          }}
+        >
+          🔄 Virar Turno
+        </button>
+      </div>
+
       {/* Cabeçalho — identidade + vitais */}
       <div className="parchment manuscript-ruled" style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(var(--gold-rgb),0.15)' }}>
         <div style={{ padding: '1.5rem' }}>
@@ -679,24 +938,21 @@ export default function CharacterSheetCard({ character }: { character: Character
             </div>
 
             <SustainAsidePanel
-              sustentoAtual={character.sustento}
-              sustentoMaximo={Math.max(1, character.sustentoMaximo ?? character.sustento)}
-              deslocamento={DESLOCAMENTO_BASE}
+              sustento={sustento}
+              sustentoMax={sustentoMax}
+              onSustentoToggle={handleSustentoToggle}
+              hunger={hunger}
+              onHungerToggle={next => handleResourceToggle('fome', next)}
+              deslocamento={deslocamentoVal.current}
+              deslocamentoMax={deslocamentoVal.max}
+              onDeslocamentoToggle={next => handleResourceToggle('deslocamento', next)}
             />
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            {VITALS.map(v => (
-              <VitalBox
-                key={v.key}
-                icon={v.icon}
-                emptyIcon={v.emptyIcon}
-                label={v.label}
-                max={Math.max(1, Math.round(atributos[v.key]))}
-                color={v.color}
-                colorRgb={v.colorRgb}
-              />
-            ))}
+            <VitalBox icon="❤️" emptyIcon="🤍" label="Coração" current={coracaoVal.current} max={coracaoVal.max} color="var(--error)" colorRgb="var(--error-rgb)" onToggle={next => handleResourceToggle('coracao', next)} />
+            <VitalBox icon="⚡" emptyIcon="◽" label="Estamina" current={estaminaVal.current} max={estaminaVal.max} color="var(--gold)" colorRgb="var(--gold-rgb)" onToggle={next => handleResourceToggle('estamina', next)} />
+            <VitalBox icon="🔮" emptyIcon="⚪" label="Alma" current={almaVal.current} max={almaVal.max} color="var(--void-glow)" colorRgb="var(--void-light-rgb)" onToggle={next => handleResourceToggle('alma', next)} />
           </div>
 
           <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.62rem', color: 'rgba(var(--text-rgb),0.4)', textAlign: 'center', marginTop: '0.6rem' }}>
@@ -713,7 +969,7 @@ export default function CharacterSheetCard({ character }: { character: Character
             <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Atributos Primários</h2>
             <div className="grid grid-cols-2 gap-3">
               {PRIMARY_ATTRS.map(([key, label, icon]) => (
-                <AttrCard key={key} icon={icon} label={label} value={atributos[key]} />
+                <AttrCard key={key} icon={icon} label={label} value={atributos[key]} onClick={() => handleAttributeTest(key, label)} />
               ))}
             </div>
           </div>
@@ -751,19 +1007,72 @@ export default function CharacterSheetCard({ character }: { character: Character
           <div className="ddb-panel p-5">
             <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Ações</h2>
             <div className="flex flex-wrap gap-3">
-              {BASE_ABILITIES.map(ability => (
+              {handActions.map((action, idx) => {
+                const hand: 'main' | 'off' | 'both' = isTwoHanded ? 'both' : idx === 0 ? 'main' : 'off'
+                const isAttack = action.tipo === 'Ataque'
+                const alreadyAttacked = hand === 'both'
+                  ? mainHandAttacked || offHandAttacked
+                  : hand === 'main' ? mainHandAttacked : offHandAttacked
+
+                return (
+                  <AbilityCard
+                    key={action.key}
+                    icon={action.icon}
+                    name={action.name}
+                    tipo={action.tipo}
+                    atributo={action.atributo}
+                    atributos={atributos}
+                    resourceEntry={findResourceEntry(resources, action.resourceSlug)}
+                    description={action.description}
+                    baseValue={action.baseValue}
+                    resultLabel={action.resultLabel}
+                    characterName={character.name}
+                    minEffortLevel={isAttack ? minAttackLevel : 1}
+                    onEffortUsed={isAttack ? (level: number) => registerHandAttack(hand, level) : undefined}
+                    locked={isAttack && alreadyAttacked}
+                    buildAppearances={myAppearances}
+                    onSpendResource={handleResourceToggle}
+                  />
+                )
+              })}
+              {otherAbilities.map(ability => (
                 <AbilityCard
-                  key={ability.slug}
-                  icon={ability.icon}
+                  key={ability.id}
+                  icon={ability.icon || '✨'}
                   name={ability.name}
-                  tipo={ability.tipo}
-                  usoLabel={ability.usoLabel}
-                  baseDice={Math.max(1, Math.round(atributos.poder))}
+                  tipo="Habilidade"
+                  atributo={ability.atributo}
+                  atributos={atributos}
+                  resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
                   description={ability.description}
+                  characterName={character.name}
                   buildAppearances={myAppearances}
+                  onSpendResource={handleResourceToggle}
                 />
               ))}
             </div>
+
+            {passiveAbilities.length > 0 && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                  Passivas
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {passiveAbilities.map(ability => (
+                    <div key={ability.id} className="card" style={{ padding: '0.7rem 0.9rem', borderRadius: 8, width: 244, flexShrink: 0 }}>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span>{ability.icon || '✨'}</span>
+                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>{ability.name}</span>
+                        <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.4rem' }}>Passiva</span>
+                      </div>
+                      <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.72rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.5 }}>
+                        {ability.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {character.trilha && character.trilha.abilities && character.trilha.abilities.length > 0 && (
               <div style={{ marginTop: '1.25rem' }}>
@@ -789,10 +1098,13 @@ export default function CharacterSheetCard({ character }: { character: Character
                         icon={ability.icon || '✨'}
                         name={ability.name}
                         tipo="Habilidade"
-                        usoLabel="Poder em dados"
-                        baseDice={Math.max(1, Math.round(atributos.poder))}
+                        atributo={ability.atributo}
+                        atributos={atributos}
+                        resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
                         description={ability.description}
+                        characterName={character.name}
                         buildAppearances={myAppearances}
+                        onSpendResource={handleResourceToggle}
                       />
                     )
                   ))}
@@ -811,8 +1123,8 @@ export default function CharacterSheetCard({ character }: { character: Character
               <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>Geo: {character.geo} 🪙</span>
             </div>
 
-            {/* Equipamento — slots de cabeça, corpo, mãos e acesso rápido. Conceito: só front, estado local. */}
-            <EquipmentPanel items={character.items} poder={atributos.poder} />
+            {/* Equipamento — slots de cabeça, corpo, mãos e acesso rápido, persistidos via pivot.slot. */}
+            <EquipmentPanel items={items} poder={atributos.poder} onAssignSlot={assignItemSlot} />
 
             <div className="flex items-center justify-between mb-1">
               <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>
@@ -826,7 +1138,7 @@ export default function CharacterSheetCard({ character }: { character: Character
               <div style={{ height: '100%', width: `${cargaPct}%`, background: cargaPct >= 100 ? 'var(--error)' : 'var(--gold)', transition: 'width 0.2s' }} />
             </div>
 
-            {character.items.length === 0 && (
+            {items.length === 0 && (
               <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.8rem', color: 'rgba(var(--text-rgb),0.35)' }}>
                 Nenhum item.
               </p>

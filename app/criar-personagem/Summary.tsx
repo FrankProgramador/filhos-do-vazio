@@ -74,8 +74,8 @@ export default function Summary({
   const geoRemaining = geoBudget - geoSpent
 
   const pickedItems: CharacterSheetItem[] = [
-    ...(selectedPackage?.items.map(item => ({ ...item, pivot: { quantity: item.pivot.quantity, is_equipped: false, durability_remaining: item.durability } })) ?? []),
-    ...purchasedEntries.map(({ item, qty }) => ({ ...item, pivot: { quantity: qty, is_equipped: false, durability_remaining: item.durability } })),
+    ...(selectedPackage?.items.map(item => ({ ...item, pivot: { quantity: item.pivot.quantity, is_equipped: false, durability_remaining: item.durability, slot: null } })) ?? []),
+    ...purchasedEntries.map(({ item, qty }) => ({ ...item, pivot: { quantity: qty, is_equipped: false, durability_remaining: item.durability, slot: null } })),
   ]
 
   return (

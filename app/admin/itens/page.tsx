@@ -12,7 +12,10 @@ const TYPE_LABELS: Record<Item['type'], string> = {
   weapon: 'Arma', armor: 'Armadura', shield: 'Escudo', tool: 'Ferramenta', consumable: 'Consumível', accessory: 'Acessório', other: 'Outro',
 }
 
-const EMPTY: ItemPayload = { name: '', slug: '', description: '', weight: 1, quality: '', base_price: 10, durability: null, is_consumable: false, type: 'weapon', image: '' }
+const EMPTY: ItemPayload = {
+  name: '', slug: '', description: '', weight: 1, quality: '', base_price: 10, durability: null, is_consumable: false, type: 'weapon', image: '',
+  base_damage: null, block_value: null, is_two_handed: false,
+}
 
 export default function AdminItensPage() {
   const { token } = useAuth()
@@ -81,9 +84,15 @@ export default function AdminItensPage() {
             <Field label="Durabilidade"><Input type="number" value={form.durability ?? ''} onChange={e => setForm({ ...form, durability: e.target.value ? Number(e.target.value) : null })} /></Field>
             <Field label="Qualidade"><Input value={form.quality ?? ''} onChange={e => setForm({ ...form, quality: e.target.value })} /></Field>
             <Field label="Imagem"><Input value={form.image ?? ''} onChange={e => setForm({ ...form, image: e.target.value })} /></Field>
+            <Field label="Dano base (arma)"><Input type="number" value={form.base_damage ?? ''} onChange={e => setForm({ ...form, base_damage: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Bloqueio base (escudo)"><Input type="number" value={form.block_value ?? ''} onChange={e => setForm({ ...form, block_value: e.target.value ? Number(e.target.value) : null })} /></Field>
             <div className="flex items-center gap-2" style={{ paddingTop: '1.5rem' }}>
               <input type="checkbox" id="is_consumable" checked={form.is_consumable} onChange={e => setForm({ ...form, is_consumable: e.target.checked })} />
               <label htmlFor="is_consumable" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Consumível</label>
+            </div>
+            <div className="flex items-center gap-2" style={{ paddingTop: '1.5rem' }}>
+              <input type="checkbox" id="is_two_handed" checked={form.is_two_handed} onChange={e => setForm({ ...form, is_two_handed: e.target.checked })} />
+              <label htmlFor="is_two_handed" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Duas mãos</label>
             </div>
             <div className="md:col-span-2">
               <Field label="Descrição"><Textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>

@@ -142,9 +142,11 @@ export type AbilityStepPayload = {
   children: AbilityStepPayload[]
 }
 
-export type AbilityPayload = Omit<Ability, 'id' | 'steps'> & {
+export type AbilityPayload = Omit<Ability, 'id' | 'steps' | 'resource'> & {
   target_type: AbilityTargetTypeValue
   target_filter: AbilityTargetFilterValue
+  /** FK crua pro save — `Ability.resource` (objeto aninhado) só existe na leitura. */
+  resource_id: number | null
   steps: AbilityStepPayload[]
 }
 
