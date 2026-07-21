@@ -42,7 +42,10 @@ export const adminTrilhas = {
 
 // ── Items ────────────────────────────────────────────────────────────────
 
-export type ItemPayload = Omit<Item, 'id'>
+export type ItemPayload = Omit<Item, 'id' | 'abilities'> & {
+  /** FKs cruas pro save — `Item.abilities` (objetos aninhados) só existe na leitura. */
+  ability_ids: number[]
+}
 
 export const adminItems = {
   list: (token: string | null) => authed<Item[]>('/api/admin/items', token),
@@ -142,12 +145,47 @@ export type AbilityStepPayload = {
   children: AbilityStepPayload[]
 }
 
-export type AbilityPayload = Omit<Ability, 'id' | 'steps' | 'resource'> & {
+export type AbilityPayload = Omit<Ability, 'id' | 'steps' | 'resource' | 'range_calculation'> & {
   target_type: AbilityTargetTypeValue
   target_filter: AbilityTargetFilterValue
   /** FK crua pro save — `Ability.resource` (objeto aninhado) só existe na leitura. */
   resource_id: number | null
+  /** FK crua pro save — `Ability.range_calculation` (objeto aninhado) só existe na leitura. */
+  range_calculation_id: number | null
   steps: AbilityStepPayload[]
+}
+
+// ── Ataque simples (editor guiado, sem Effect/Calculation manuais) ─────────
+
+export type SimpleAttackAmountSource =
+  | { kind: 'fixed'; value: number }
+  | { kind: 'weapon_damage' }
+  | { kind: 'weapon_block' }
+  | { kind: 'attribute'; attribute_id: number | null; multiplier: number | null }
+
+export type SimpleAttackAction =
+  | { type: 'damage'; amount: SimpleAttackAmountSource; element_id: number | null; cap_attribute_id: number | null }
+  | { type: 'apply_condition'; condition_id: number | null; owner: StepConditionOwnerValue }
+
+export type SimpleAttackConditionSource =
+  | { kind: 'hits'; operator: StepConditionOperatorValue; value: number }
+  | { kind: 'resource'; resource_id: number | null; owner: StepConditionOwnerValue; operator: StepConditionOperatorValue; value: number }
+  | { kind: 'attribute'; attribute_id: number | null; owner: StepConditionOwnerValue; operator: StepConditionOperatorValue; value: number }
+
+export type SimpleAttackRulePayload = { action: SimpleAttackAction }
+export type SimpleAttackExtraRulePayload = { condition: SimpleAttackConditionSource; action: SimpleAttackAction }
+
+export type SimpleAttackAbilityPayload = {
+  name: string
+  slug: string
+  description: string
+  icon: string | null
+  display_order: number
+  atributo: 'poder' | 'graca' | 'casca' | 'saber'
+  resource_id: number | null
+  custo: number
+  base_rule: SimpleAttackRulePayload
+  extra_rules: SimpleAttackExtraRulePayload[]
 }
 
 export const adminAbilities = {
@@ -158,6 +196,10 @@ export const adminAbilities = {
     authed<Ability>(`/api/admin/abilities/${id}`, token, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
+  createSimpleAttack: (token: string | null, data: SimpleAttackAbilityPayload) =>
+    authed<Ability>('/api/admin/abilities/simple-attack', token, { method: 'POST', body: JSON.stringify(data) }),
+  updateSimpleAttack: (token: string | null, id: number, data: SimpleAttackAbilityPayload) =>
+    authed<Ability>(`/api/admin/abilities/${id}/simple-attack`, token, { method: 'PUT', body: JSON.stringify(data) }),
 }
 
 // ── Attributes ───────────────────────────────────────────────────────────

@@ -4,15 +4,17 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/lib/auth-context'
 import { ApiError } from '@/app/lib/api'
 import {
-  adminAbilities, adminAttributes, adminCalculations, adminConditions, adminEffects, adminResources,
+  adminAbilities, adminAttributes, adminCalculations, adminConditions, adminEffects, adminElements, adminResources,
   type AbilityPayload, type AbilityStepEffectPayload, type AbilityStepPayload, type StepConditionPayload,
 } from '@/app/lib/adminData'
 import type {
   Ability, AbilityStep, AbilityTargetFilterValue, AbilityTargetTypeValue, AbilityTriggerEventValue, Attribute,
-  Calculation, Condition, GameEffect, GameResource, StepCondition, StepConditionOperandValue,
+  Calculation, Condition, Element, GameEffect, GameResource, StepCondition, StepConditionOperandValue,
   StepConditionOperatorValue, StepConditionOwnerValue, StepConditionTypeValue,
 } from '@/app/lib/gameData'
 import { AdminTable, ConfirmButton, Field, Input, Select, Td, Textarea, Tr } from '../AdminUI'
+import { ATRIBUTO_LABELS, ATRIBUTOS, type AtributoRolavel, OPERATOR_LABELS, OPERATORS, OWNER_LABELS, OWNERS } from './shared'
+import SimpleAttackEditor from './SimpleAttackEditor'
 
 const TARGET_TYPES: AbilityTargetTypeValue[] = ['self', 'single', 'area', 'line', 'cone']
 const TARGET_TYPE_LABELS: Record<AbilityTargetTypeValue, string> = {
@@ -48,15 +50,6 @@ const OPERAND_TYPE_LABELS: Record<StepConditionOperandValue, string> = {
   fixed: 'Valor Fixo', attribute: 'Atributo', resource: 'Recurso', context: 'Contexto',
 }
 
-const OWNERS: StepConditionOwnerValue[] = ['self', 'target', 'source']
-const OWNER_LABELS: Record<StepConditionOwnerValue, string> = { self: 'Você mesmo', target: 'Alvo', source: 'Origem' }
-
-const OPERATORS: StepConditionOperatorValue[] = ['>', '<', '>=', '<=', '==', '!=']
-const OPERATOR_LABELS: Record<StepConditionOperatorValue, string> = {
-  '>': '> (maior que)', '<': '< (menor que)', '>=': '>= (maior ou igual)', '<=': '<= (menor ou igual)',
-  '==': '== (igual)', '!=': '!= (diferente)',
-}
-
 const EMPTY_STEP_EFFECT = (effects: GameEffect[]): AbilityStepEffectPayload => ({
   effect_id: effects[0]?.id ?? 0, calculation_id: null, order: 0,
 })
@@ -73,14 +66,9 @@ const EMPTY_STEP = (isElse: boolean, order: number): AbilityStepPayload => ({
 const EMPTY: AbilityPayload = {
   name: '', slug: '', description: '', icon: '', is_passive: false, is_hidden: false, display_order: 0,
   range: null, target_type: 'self', target_filter: 'any', cooldown_base: null,
-  atributo: null, resource_id: null, usa_dano_arma: false, is_innate: false,
+  atributo: null, resource_id: null, is_innate: false, custo: 1,
+  is_bloqueio: false, range_calculation_id: null, builder_mode: 'advanced',
   steps: [],
-}
-
-type AtributoRolavel = 'poder' | 'graca' | 'casca' | 'saber'
-const ATRIBUTOS: AtributoRolavel[] = ['poder', 'graca', 'casca', 'saber']
-const ATRIBUTO_LABELS: Record<AtributoRolavel, string> = {
-  poder: 'Poder', graca: 'Graça', casca: 'Casca', saber: 'Saber',
 }
 
 function mapConditionToPayload(sc: StepCondition): StepConditionPayload {
@@ -394,8 +382,10 @@ export default function AdminHabilidadesPage() {
   const [attributes, setAttributes] = useState<Attribute[]>([])
   const [resources, setResources] = useState<GameResource[]>([])
   const [conditions, setConditions] = useState<Condition[]>([])
+  const [elements, setElements] = useState<Element[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [builderMode, setBuilderMode] = useState<'simple_attack' | 'advanced' | null>(null)
   const [form, setForm] = useState<AbilityPayload>(EMPTY)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -406,13 +396,22 @@ export default function AdminHabilidadesPage() {
     adminAttributes.list(token).then(setAttributes)
     adminResources.list(token).then(setResources)
     adminConditions.list(token).then(setConditions)
+    adminElements.list(token).then(setElements)
     return adminAbilities.list(token).then(setAbilities).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [token])
 
-  function startCreate() { setEditingId(0); setForm(EMPTY); setError(null) }
+  const editingAbility = editingId ? abilities.find(a => a.id === editingId) ?? null : null
+
+  function startCreate(mode: 'simple_attack' | 'advanced') {
+    setEditingId(0)
+    setBuilderMode(mode)
+    setForm(EMPTY)
+    setError(null)
+  }
   function startEdit(a: Ability) {
     setEditingId(a.id)
+    setBuilderMode(a.builder_mode)
     setForm({
       name: a.name,
       slug: a.slug,
@@ -427,13 +426,16 @@ export default function AdminHabilidadesPage() {
       cooldown_base: a.cooldown_base,
       atributo: a.atributo,
       resource_id: a.resource?.id ?? null,
-      usa_dano_arma: a.usa_dano_arma,
       is_innate: a.is_innate,
+      custo: a.custo,
+      is_bloqueio: a.is_bloqueio,
+      range_calculation_id: a.range_calculation?.id ?? null,
+      builder_mode: a.builder_mode,
       steps: a.steps.map(mapStepToPayload),
     })
     setError(null)
   }
-  function cancel() { setEditingId(null); setForm(EMPTY); setError(null) }
+  function cancel() { setEditingId(null); setBuilderMode(null); setForm(EMPTY); setError(null) }
 
   function addRootStep() {
     setForm({ ...form, steps: [...form.steps, { ...EMPTY_STEP(false, form.steps.length), trigger: 'on_use' }] })
@@ -480,7 +482,12 @@ export default function AdminHabilidadesPage() {
     <div className="flex flex-col gap-6" style={{ maxWidth: 1200 }}>
       <div className="flex items-center justify-between">
         <h1 style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.4rem', color: 'var(--text)' }}>Habilidades</h1>
-        {editingId === null && <button onClick={startCreate} className="btn-hero" style={{ fontSize: '0.7rem', padding: '0.55rem 1.2rem' }}>+ Nova Habilidade</button>}
+        {editingId === null && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => startCreate('simple_attack')} className="btn-hero" style={{ fontSize: '0.7rem', padding: '0.55rem 1.2rem' }}>+ Ataque (simples)</button>
+            <button onClick={() => startCreate('advanced')} className="hk-btn hk-btn-soul" style={{ fontSize: '0.7rem', padding: '0.55rem 1.2rem', borderRadius: 6 }}>+ Avançado</button>
+          </div>
+        )}
       </div>
 
       <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', color: 'rgba(var(--text-rgb),0.55)', maxWidth: 700 }}>
@@ -489,7 +496,20 @@ export default function AdminHabilidadesPage() {
 
       {error && <div className="alert alert--error" style={{ fontSize: '0.75rem' }}>{error}</div>}
 
-      {editingId !== null && (
+      {editingId !== null && builderMode === 'simple_attack' && (
+        <SimpleAttackEditor
+          token={token}
+          ability={editingAbility}
+          attributes={attributes}
+          resources={resources}
+          elements={elements}
+          conditions={conditions}
+          onSaved={() => { load(); cancel() }}
+          onCancel={cancel}
+        />
+      )}
+
+      {editingId !== null && builderMode === 'advanced' && (
         <div className="card" style={{ padding: '1.25rem', borderRadius: 10 }}>
           <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--gold)', marginBottom: '1rem' }}>
             {editingId ? 'Editar Habilidade' : 'Nova Habilidade'}
@@ -523,6 +543,15 @@ export default function AdminHabilidadesPage() {
                 {resources.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </Select>
             </Field>
+            <Field label="Custo (1º uso, sem Esforço)" required>
+              <Input type="number" min={1} value={form.custo} onChange={e => setForm({ ...form, custo: Number(e.target.value) })} />
+            </Field>
+            <Field label="Cálculo de Alcance (exibição)">
+              <Select value={form.range_calculation_id ?? ''} onChange={e => setForm({ ...form, range_calculation_id: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">— sem cálculo de alcance —</option>
+                {calculations.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+            </Field>
             <div className="flex items-center gap-4" style={{ paddingTop: '1.5rem' }}>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_passive" checked={form.is_passive} onChange={e => setForm({ ...form, is_passive: e.target.checked })} />
@@ -535,14 +564,15 @@ export default function AdminHabilidadesPage() {
             </div>
             <div className="flex items-center gap-4" style={{ paddingTop: '0.5rem' }}>
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="usa_dano_arma" checked={form.usa_dano_arma} onChange={e => setForm({ ...form, usa_dano_arma: e.target.checked })} />
-                <label htmlFor="usa_dano_arma" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Usa dano/bloqueio da arma equipada</label>
-              </div>
-              <div className="flex items-center gap-2">
                 <input type="checkbox" id="is_innate" checked={form.is_innate} onChange={e => setForm({ ...form, is_innate: e.target.checked })} />
                 <label htmlFor="is_innate" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Inata (todo personagem já tem)</label>
               </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="is_bloqueio" checked={form.is_bloqueio} onChange={e => setForm({ ...form, is_bloqueio: e.target.checked })} />
+                <label htmlFor="is_bloqueio" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>É bloqueio (não conta como ataque)</label>
+              </div>
             </div>
+
             <div className="md:col-span-2">
               <Field label="Descrição" required><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
             </div>

@@ -84,6 +84,14 @@ export type Item = {
   block_value: number | null
   /** Ocupa mão principal + auxiliar — equipar aqui desequipa (e trava) a auxiliar. */
   is_two_handed: boolean
+  /** Habilidades que este item concede ao ser equipado numa mão (N por item — um escudo
+   * pode atacar E bloquear ao mesmo tempo). Vazio = fica no baseline desarmado. */
+  abilities: Ability[]
+  /** Alcance explícito do item (ex: chicote 2–3, não funciona em melee) — só exibição. */
+  min_range: number | null
+  max_range: number | null
+  /** Item "base" do qual este deriva — só linhagem/organização, sem herança automática de campos. */
+  parent_item_id: number | null
 }
 
 export type EquipmentPackage = {
@@ -205,6 +213,9 @@ export type CalculationOperationValue = 'add' | 'subtract' | 'multiply' | 'divid
 export type CalculationSourceTypeValue =
   | 'fixed_value' | 'attribute' | 'resource' | 'fixed_dice' | 'attribute_dice' | 'distance' | 'context' | 'position'
 
+/** Chaves fechadas disponíveis quando source_type='context' — o resolver da ficha monta esses valores em tempo de rolagem. */
+export type CalculationContextKeyValue = 'hits' | 'weapon_base_damage' | 'weapon_block_value' | 'weapon_weight'
+
 export type CalculationComponent = {
   id: number
   calculation_id: number
@@ -213,6 +224,7 @@ export type CalculationComponent = {
   source_type: CalculationSourceTypeValue
   source_id: number | null
   value: number | null
+  context_key: CalculationContextKeyValue | null
 }
 
 /** Calculation é só VALUE — retorna um número via seus components. Lógica condicional vive em StepCondition. */
@@ -330,10 +342,20 @@ export type Ability = {
   atributo: keyof Atributos | null
   /** Recurso gasto no Esforço (dados extra); null = Esforço não disponível pra essa habilidade. */
   resource: GameResource | null
-  /** Se true, resolvida com uma arma/escudo equipado na mão relevante usa o dano/bloqueio base do item em vez do baseline desarmado. */
-  usa_dano_arma: boolean
   /** true pras habilidades concedidas automaticamente a todo personagem (ex: Ataque Desarmado). */
   is_innate: boolean
+  /** Custo do 1º uso (sem Esforço) no recurso da habilidade. Esforço continua a mesma
+   * progressão triangular, só que deslocada a partir daqui — ver `effortCost()`. */
+  custo: number
+  /** Marca habilidades de bloqueio — não contam como ataque pra trava de "1 ataque por mão por turno". */
+  is_bloqueio: boolean
+  /** Cálculo opcional só de exibição (ex: "Alcance: 2" em Arremesso) — sem checagem contra nada,
+   * a ficha não tem alvo/distância. Ver `computeRangeDisplay` em `abilityResolver.ts`. */
+  range_calculation: Calculation | null
+  /** Qual editor admin escreveu (e deve reabrir) esta Ability — 'simple_attack' usa o
+   * formulário guiado em frases (SimpleAttackEditor.tsx); 'advanced' usa o editor cru
+   * de Steps/Condições. Não afeta a ficha/resolver, só o admin. */
+  builder_mode: 'simple_attack' | 'advanced'
 }
 
 export type CharSheet = {
@@ -444,6 +466,16 @@ export function fetchTrilhas(): Promise<Trilha[]> {
  */
 export function triangularCost(diceCount: number): number {
   return (diceCount * (diceCount + 1)) / 2
+}
+
+/**
+ * Custo de Esforço de uma habilidade específica: o 1º uso (nível 1, sem dado extra)
+ * custa o `custo` da própria habilidade, não sempre 1 — mas a progressão do Esforço
+ * em si continua a mesma lei triangular de sempre (mesmo formato, só deslocada a
+ * partir do custo base). custo=1 reproduz exatamente a tabela antiga (1,3,6,10).
+ */
+export function effortCost(custo: number, level: number): number {
+  return custo + triangularCost(level) - 1
 }
 
 /** Ajusta o valor atual de um recurso (Coração/Estamina/Alma/Deslocamento/Fome) — clicar num pip, gastar Esforço, etc. */

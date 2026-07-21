@@ -99,7 +99,7 @@ export function BattleLog({ entries, height }: { entries: string[]; height: numb
  * vermelha), depois mostra o total de sucessos. "OK" fecha (quem chama deve
  * limpar os dados físicos da mesa em `onClose`).
  */
-export function DiceResultModal({ rolls, resultText, onClose }: { rolls: number[]; resultText?: string; onClose: () => void }) {
+export function DiceResultModal({ rolls, title, resultText, onClose }: { rolls: number[]; title?: string; resultText?: string; onClose: () => void }) {
   const [revealCount, setRevealCount] = useState(0)
   const successes = rolls.filter(roll => roll >= SUCCESS_THRESHOLD).length
 
@@ -120,6 +120,11 @@ export function DiceResultModal({ rolls, resultText, onClose }: { rolls: number[
       }}
     >
       <div className="ddb-panel parchment p-4" style={{ minWidth: 300, textAlign: 'center' }}>
+        {title && (
+          <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--gold)', marginBottom: '1rem' }}>
+            {title}
+          </p>
+        )}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: '1.25rem' }}>
           {rolls.map((roll, i) => {
             const shown = i < revealCount

@@ -8,7 +8,7 @@ import {
   type CalculationComponentPayload, type CalculationPayload,
 } from '@/app/lib/adminData'
 import type {
-  Attribute, Calculation, CalculationOperationValue, CalculationSourceTypeValue, GameResource,
+  Attribute, Calculation, CalculationContextKeyValue, CalculationOperationValue, CalculationSourceTypeValue, GameResource,
 } from '@/app/lib/gameData'
 import { AdminTable, ConfirmButton, Field, Input, Select, Td, Textarea, Tr } from '../AdminUI'
 
@@ -26,8 +26,16 @@ const SOURCE_TYPE_LABELS: Record<CalculationSourceTypeValue, string> = {
   position: 'Posição (grid)',
 }
 
+const CONTEXT_KEYS: CalculationContextKeyValue[] = ['hits', 'weapon_base_damage', 'weapon_block_value', 'weapon_weight']
+const CONTEXT_KEY_LABELS: Record<CalculationContextKeyValue, string> = {
+  hits: 'Sucessos da rolagem (hits)',
+  weapon_base_damage: 'Dano base da arma equipada',
+  weapon_block_value: 'Bloqueio da arma equipada',
+  weapon_weight: 'Peso da arma equipada',
+}
+
 const EMPTY_COMPONENT: CalculationComponentPayload = {
-  order: 0, operation: 'add', source_type: 'fixed_value', source_id: null, value: null,
+  order: 0, operation: 'add', source_type: 'fixed_value', source_id: null, value: null, context_key: null,
 }
 
 const EMPTY: CalculationPayload = { name: '', slug: '', description: '', components: [] }
@@ -74,7 +82,7 @@ export default function AdminCalculosPage() {
   }
 
   function changeSourceType(i: number, sourceType: CalculationSourceTypeValue) {
-    updateComponent(i, { source_type: sourceType, source_id: null })
+    updateComponent(i, { source_type: sourceType, source_id: null, context_key: null })
   }
 
   async function save() {
@@ -160,6 +168,13 @@ export default function AdminCalculosPage() {
                       <Select value={component.source_id ?? ''} onChange={e => updateComponent(i, { source_id: e.target.value ? Number(e.target.value) : null })}>
                         <option value="">Selecione…</option>
                         {resources.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </Select>
+                    </Field>
+                  ) : component.source_type === 'context' ? (
+                    <Field label="Chave de Contexto" required>
+                      <Select value={component.context_key ?? ''} onChange={e => updateComponent(i, { context_key: e.target.value ? e.target.value as CalculationContextKeyValue : null })}>
+                        <option value="">Selecione…</option>
+                        {CONTEXT_KEYS.map(k => <option key={k} value={k}>{CONTEXT_KEY_LABELS[k]}</option>)}
                       </Select>
                     </Field>
                   ) : (

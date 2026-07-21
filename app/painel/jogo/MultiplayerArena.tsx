@@ -431,7 +431,7 @@ export default function MultiplayerArena({ matchId, onExit }: { matchId: number;
       const resultText = r.hit
         ? (iAmAttacker ? `Você causou ${r.damage} de dano em ${nameFor(target)}.` : `${nameFor(attacker)} causou ${r.damage} de dano em você.`)
         : (iAmAttacker ? 'Você errou o ataque.' : `${nameFor(attacker)} errou o ataque.`)
-      diceStage.showDiceRoll(r.rolls, resultText, toDiceAppearances(r.dice_skins))
+      diceStage.showDiceRoll(r.rolls, `${nameFor(attacker)} usa ${optionLabel}`, resultText, toDiceAppearances(r.dice_skins))
 
       const message = r.hit
         ? `${nameFor(attacker)} usa ${optionLabel}: ${r.successes} sucesso(s) — ${r.damage} de dano em ${nameFor(target)}.`
@@ -569,7 +569,12 @@ export default function MultiplayerArena({ matchId, onExit }: { matchId: number;
             const r = next.last_attack_result
             if (!r) return
 
-            diceStage.showDiceRoll(r.rolls, r.hit ? `Você causou ${r.damage} de dano em ${target.label}.` : 'Você errou o ataque.', toDiceAppearances(r.dice_skins))
+            diceStage.showDiceRoll(
+              r.rolls,
+              `${attacker!.label} usa ${optionLabel}`,
+              r.hit ? `Você causou ${r.damage} de dano em ${target.label}.` : 'Você errou o ataque.',
+              toDiceAppearances(r.dice_skins)
+            )
 
             const message = r.hit
               ? `${attacker!.label} usa ${optionLabel}: ${r.successes} sucesso(s) — ${r.damage} de dano em ${target.label}.`

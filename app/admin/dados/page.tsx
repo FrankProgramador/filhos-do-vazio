@@ -39,7 +39,7 @@ export default function AdminDadosPage() {
   useEffect(() => { load() }, [token])
 
   function testAppearance(appearance: { foreground_color: string; background_color: string; material: string; texture: string; pip_style: boolean }) {
-    diceStage.showDiceRoll([randomDie()], undefined, [{
+    diceStage.showDiceRoll([randomDie()], undefined, undefined, [{
       foreground: appearance.foreground_color, background: appearance.background_color,
       material: appearance.material, texture: appearance.texture, pipStyle: appearance.pip_style,
     }])

@@ -122,7 +122,7 @@ export default function ColecaoDeDadosPage() {
                 {skin.quantity > 1 && <span className="ddb-badge ddb-badge-dim">x{skin.quantity}</span>}
 
                 <button
-                  onClick={() => diceStage.showDiceRoll([randomDie()], undefined, [{
+                  onClick={() => diceStage.showDiceRoll([randomDie()], undefined, undefined, [{
                     foreground: skin.foreground_color, background: skin.background_color, material: skin.material, texture: skin.texture, pipStyle: skin.pip_style,
                   }])}
                   className="ddb-badge ddb-badge-dim"

@@ -56,6 +56,10 @@ export type DiceEngineConfig = {
   strength?: number
   /** Multiplicador de gravidade da mesa. */
   gravityMultiplier?: number
+  /** Som de impacto dos dados (batida na mesa/entre dados) — off por padrão na lib. */
+  sounds?: boolean
+  /** Volume 0-100, só tem efeito com `sounds: true`. */
+  volume?: number
 }
 
 /**
@@ -84,6 +88,8 @@ export async function createDiceEngine(
     theme_texture: 'none',
     strength: config.strength ?? 1,
     gravity_multiplier: config.gravityMultiplier ?? 400,
+    sounds: config.sounds ?? true,
+    volume: config.volume ?? 100,
     onRollComplete: () => {},
   })
 

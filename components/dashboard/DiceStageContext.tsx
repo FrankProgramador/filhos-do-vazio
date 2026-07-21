@@ -5,16 +5,20 @@ import Dice3D, { type Dice3DHandle } from '@/components/Dice3D'
 import type { DiceAppearance, DiceColorset } from '@/app/lib/dice/diceEngine'
 import { defaultAppearances, DICE_RESULT_DELAY, DiceResultModal } from '@/app/painel/jogo/shared'
 
-type DiceResultState = { rolls: number[]; resultText?: string }
+type DiceResultState = { rolls: number[]; title?: string; resultText?: string }
 
 type DiceStageContextValue = {
   /** Anima os dados já decididos (pelo cliente no solo, pelo servidor no mano a
    * mano — nunca sorteados de novo aqui) e agenda o modal de resultado.
-   * `colorsetOrAppearances`: um único `DiceColorset` tinge TODOS os dados dessa
-   * rolagem com uma cor só (ex: azul pro jogador A, vermelho pro B — uso atual);
-   * um array de `DiceAppearance` (mesmo tamanho de `rolls`) dá uma skin própria
-   * (cor+material+textura) pra CADA dado físico, todos na mesma animação. */
-  showDiceRoll: (rolls: number[], resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) => void
+   * `title`: cabeçalho do modal (ex: "re56 rolou Ataque com Arma — Ferrão (Mão
+   * Principal)") — quem rolou o quê, sempre em destaque no topo, nunca dentro do
+   * corpo do texto. `resultText`: corpo opcional (descrição da habilidade, dano
+   * calculado etc). `colorsetOrAppearances`: um único `DiceColorset` tinge TODOS
+   * os dados dessa rolagem com uma cor só (ex: azul pro jogador A, vermelho pro
+   * B — uso atual); um array de `DiceAppearance` (mesmo tamanho de `rolls`) dá
+   * uma skin própria (cor+material+textura) pra CADA dado físico, todos na
+   * mesma animação. */
+  showDiceRoll: (rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) => void
   /** true desde `showDiceRoll` até o "OK" do modal — use pra esconder outra UI
    * (ex: menu de ações) enquanto a rolagem não terminou de vez. */
   resolving: boolean
@@ -54,7 +58,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  function showDiceRoll(rolls: number[], resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) {
+  function showDiceRoll(rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) {
     setResolving(true)
     if (diceResultTimeoutRef.current) clearTimeout(diceResultTimeoutRef.current)
 
@@ -72,7 +76,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
     // "OK" apagava a mesa no meio da sequência, fazendo os dados "sumirem".
     promise
       ?.then(() => {
-        diceResultTimeoutRef.current = setTimeout(() => setDiceResult({ rolls, resultText }), DICE_RESULT_DELAY)
+        diceResultTimeoutRef.current = setTimeout(() => setDiceResult({ rolls, title, resultText }), DICE_RESULT_DELAY)
       })
       .catch(err => {
         console.error('[Dice3D] rolagem falhou:', err)
@@ -90,7 +94,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
     <DiceStageContext.Provider value={{ showDiceRoll, resolving }}>
       {children}
       <Dice3D ref={diceBoxRef} portal width={diceStageSize.width} height={diceStageSize.height} />
-      {diceResult && <DiceResultModal rolls={diceResult.rolls} resultText={diceResult.resultText} onClose={closeDiceResult} />}
+      {diceResult && <DiceResultModal rolls={diceResult.rolls} title={diceResult.title} resultText={diceResult.resultText} onClose={closeDiceResult} />}
 
       {/* Botão de teste temporário — rola dados no branco padrão (mesmo fallback usado
           quando alguém não tem skin nenhuma na coleção), sem precisar passar pelo
@@ -99,7 +103,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
         type="button"
         onClick={() => {
           const rolls = [1, 2, 3].map(() => 1 + Math.floor(Math.random() * 6))
-          showDiceRoll(rolls, 'Teste', defaultAppearances(rolls.length))
+          showDiceRoll(rolls, 'Teste', undefined, defaultAppearances(rolls.length))
         }}
         style={{
           position: 'fixed', bottom: 16, right: 16, zIndex: 10001,

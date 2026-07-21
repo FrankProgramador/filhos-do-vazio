@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import {
-  fetchMyDiceSkins, triangularCost, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
+  effortCost, fetchMyDiceSkins, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
   type Ability, type Atributos, type CharacterResourceEntry, type GameTrait, type Item, type OwnedDiceSkin,
   type Size, type Trilha, type TraitRarity,
 } from '@/app/lib/gameData'
@@ -10,6 +10,7 @@ import { useAuth } from '@/app/lib/auth-context'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
 import { DICE_APPEARANCE_DEFAULT, SUCCESS_THRESHOLD } from '@/app/painel/jogo/shared'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
+import { computeRangeDisplay, resolveAbilityEffects, type RollContext } from '@/app/lib/abilityResolver'
 
 /**
  * Forma normalizada de dados que tanto a ficha salva (`/painel/personagens/[id]`)
@@ -59,13 +60,15 @@ function fmtAttr(v: number | string) {
 // secundária (slots de equipamento/técnica), mas nenhum dos dois está em uso —
 // não há mecânica de slots implementada ainda. Não exibir até existir.
 const PRIMARY_ATTRS: Array<[keyof Atributos, string, string]> = [
-  ['poder', 'Poder', '👊'],
+  ['poder', 'Força', '👊'],
   ['graca', 'Graça', '🪶'],
-  ['casca', 'Casca', '🛡️'],
   ['saber', 'Saber', '📖'],
+  ['casca', 'Casca', '🛡️'],
 ]
 
-const ATTR_LABELS: Record<string, string> = { poder: 'Poder', graca: 'Graça', casca: 'Casca', saber: 'Saber' }
+// Rótulo do atributo pra "Teste de X" no card de habilidade — 'poder' aparece como
+// "Força" aqui (mesmo nome usado em PRIMARY_ATTRS), os demais usam o nome do atributo.
+const ATTR_TEST_LABELS: Record<string, string> = { poder: 'Força', graca: 'Graça', casca: 'Casca', saber: 'Saber' }
 
 // Deslocamento não é mais derivado de Graça — agora é uma base fixa (5),
 // espelhada em Character::DESLOCAMENTO_BASE no backend. Usada só como fallback
@@ -114,7 +117,8 @@ const FALLBACK_UNARMED_ABILITY: Ability = {
   description: 'Ataca o oponente com as mãos nuas. O dano é a quantidade de acertos − Casca do oponente.',
   icon: '👊', is_passive: false, is_hidden: false, display_order: 0, range: null,
   target_type: 'single', target_filter: 'enemy', cooldown_base: null, steps: [],
-  atributo: 'poder', resource: null, usa_dano_arma: true, is_innate: true,
+  atributo: 'poder', resource: null, is_innate: true, custo: 1,
+  is_bloqueio: false, range_calculation: null, builder_mode: 'advanced',
 }
 
 function findResourceEntry(resources: CharacterResourceEntry[], slug: string | null | undefined): CharacterResourceEntry | null {
@@ -196,6 +200,41 @@ function VitalBox({ icon, emptyIcon, label, current, max, color, colorRgb, onTog
               onClick={() => onToggle(i + 1 === current ? i : i + 1)}
               aria-label={`${label} ${i + 1} de ${max}`}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '0.9rem' }}
+            >
+              {filled ? icon : emptyIcon}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Mesma informação do VitalBox (label + atual/máx + pips clicáveis), só que sem
+// ícone e tudo numa única linha — usado no cabeçalho ao lado do avatar, sem card
+// próprio (a "moldura" ali é o cabeçalho inteiro, não cada item individualmente).
+function VitalLine({ icon, emptyIcon, label, current, max, color, onToggle }: {
+  icon: string; emptyIcon: string; label: string; current: number; max: number; color: string
+  onToggle: (next: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color, width: 68, flexShrink: 0 }}>
+        {label}
+      </span>
+      <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', flexShrink: 0 }}>
+        {current}<span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>/{max}</span>
+      </span>
+      <div className="flex items-center gap-1 flex-wrap">
+        {Array.from({ length: max }, (_, i) => {
+          const filled = i < current
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onToggle(i + 1 === current ? i : i + 1)}
+              aria-label={`${label} ${i + 1} de ${max}`}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '0.8rem' }}
             >
               {filled ? icon : emptyIcon}
             </button>
@@ -295,62 +334,53 @@ function VitalPipHalf({ icon, primary, primarySuffix, label, color, current, max
   )
 }
 
-function SustainAsidePanel({
+// Card dividido: Refeições | Estágio da Fome — mesma estrutura do VitalBox (ícone +
+// número/label em cima, pips embaixo) nas duas metades. Sobem/descem juntos (comer
+// abaixa a fome, virar o dia sem comer sobe), por isso ficam no mesmo card. Fica lado
+// a lado com o avatar/nome e o Deslocamento numa grade de 3 colunas iguais (ver
+// cabeçalho) — não pode depender do tamanho do nome pra manter alinhamento consistente.
+function MealsHungerCard({
   sustento, sustentoMax, onSustentoToggle,
   hunger, onHungerToggle,
-  deslocamento, deslocamentoMax, onDeslocamentoToggle,
 }: {
   sustento: number; sustentoMax: number; onSustentoToggle: (next: number) => void
   hunger: number; onHungerToggle: (next: number) => void
-  deslocamento: number; deslocamentoMax: number; onDeslocamentoToggle: (next: number) => void
 }) {
   const stage = HUNGER_STAGES[Math.min(hunger, HUNGER_MAX)]
   const hungerColor = hunger === 0 ? 'var(--text-muted)' : hunger >= HUNGER_MAX ? 'var(--error)' : 'var(--gold)'
   const hungerColorRgb = hunger >= HUNGER_MAX ? 'var(--error-rgb)' : 'var(--gold-rgb)'
 
   return (
-    <div className="flex gap-3 flex-nowrap" style={{ width: '100%' }}>
-      {/* Card dividido: Refeições | Estágio da Fome — mesma estrutura do VitalBox
-          (ícone + número/label em cima, pips embaixo) nas duas metades. Sobem/
-          descem juntos (comer abaixa a fome, virar o dia sem comer sobe), por
-          isso ficam no mesmo card. Ocupa metade do espaço; a outra metade é o
-          card de Deslocamento, mesmo padrão de Coração/Estamina/Alma. */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'nowrap', padding: '0.8rem 1rem', background: 'var(--card)', border: `1px solid rgba(${hungerColorRgb},0.35)`, borderRadius: 10 }}>
-        <VitalPipHalf
-          icon="🍽️"
-          primary={`${sustento}`}
-          primarySuffix={`/${sustentoMax}`}
-          label="Refeições"
-          color="var(--gold)"
-          current={sustento}
-          max={sustentoMax}
-          filledChar="🍞"
-          onToggle={onSustentoToggle}
-        />
+    <div style={{ flex: '1 1 320px', display: 'flex', flexWrap: 'nowrap', padding: '0.8rem 1rem', background: 'var(--card)', border: `1px solid rgba(${hungerColorRgb},0.35)`, borderRadius: 10 }}>
+      <VitalPipHalf
+        icon="🍽️"
+        primary={`${sustento}`}
+        primarySuffix={`/${sustentoMax}`}
+        label="Refeições"
+        color="var(--gold)"
+        current={sustento}
+        max={sustentoMax}
+        filledChar="🍞"
+        onToggle={onSustentoToggle}
+      />
 
-        <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(var(--gold-rgb),0.15)', margin: '0 0.9rem' }} />
+      <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(var(--gold-rgb),0.15)', margin: '0 0.9rem' }} />
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="flex items-center gap-2" style={{ marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '1.3rem' }}>😫</span>
-            <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: hungerColor }}>
-              Estágio da Fome
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex items-center gap-2" style={{ marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '1.3rem' }}>😫</span>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: hungerColor }}>
+            Estágio da Fome
+          </span>
+        </div>
+        <HoverTip title={stage.title} detail={stage.detail}>
+          <div className="flex items-center gap-1.5">
+            <PipRow current={hunger} max={HUNGER_MAX} onToggle={onHungerToggle} filledChar="😫" size="0.95rem" />
+            <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: hungerColor }}>
+              {stage.name}
             </span>
           </div>
-          <HoverTip title={stage.title} detail={stage.detail}>
-            <div className="flex items-center gap-1.5">
-              <PipRow current={hunger} max={HUNGER_MAX} onToggle={onHungerToggle} filledChar="😫" size="0.95rem" />
-              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: hungerColor }}>
-                {stage.name}
-              </span>
-            </div>
-          </HoverTip>
-        </div>
-      </div>
-
-      {/* Deslocamento — mesmo modelo visual de Coração/Estamina/Alma (VitalBox) */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <VitalBox icon="👣" emptyIcon="⚪" label="Deslocamento" current={deslocamento} max={deslocamentoMax} color="var(--gold)" colorRgb="var(--gold-rgb)" onToggle={onDeslocamentoToggle} />
+        </HoverTip>
       </div>
     </div>
   )
@@ -504,8 +534,8 @@ function EquipmentPanel({ items, poder, onAssignSlot }: {
         <EquipSlotRow label="Corpo" icon="👕" item={body} options={optionsFor(body)} onChange={i => onAssignSlot('body', i?.id ?? null)} />
         <EquipSlotRow label="Mão principal" icon="🗡️" item={mainHand} options={optionsFor(mainHand)} onChange={i => onAssignSlot('main_hand', i?.id ?? null)} />
         <EquipSlotRow label="Mão auxiliar 1" icon="🛡️" item={offHand1} options={optionsFor(offHand1)} onChange={i => onAssignSlot('off_hand_1', i?.id ?? null)} disabled={Boolean(mainHand?.is_two_handed)} />
-        <EquipSlotRow label="Mão auxiliar 2" icon="🛡️" item={null} options={[]} onChange={() => {}} disabled />
-        <EquipSlotRow label="Mão auxiliar 3" icon="🛡️" item={null} options={[]} onChange={() => {}} disabled />
+        <EquipSlotRow label="Mão auxiliar 2" icon="🛡️" item={null} options={[]} onChange={() => { }} disabled />
+        <EquipSlotRow label="Mão auxiliar 3" icon="🛡️" item={null} options={[]} onChange={() => { }} disabled />
       </div>
 
       <div style={{ marginTop: '0.5rem' }}>
@@ -534,23 +564,29 @@ function EquipmentPanel({ items, poder, onAssignSlot }: {
   )
 }
 
-// Níveis de Esforço: cada nível adiciona 1 dado à rolagem, custando o recurso da
-// habilidade em progressão triangular (1, 3, 6, 10 — n·(n+1)/2), sempre a mesma
-// tabela indiferente de qual recurso é gasto (Estamina/Alma/Coração/...).
+// Níveis de Esforço: cada nível adiciona 1 dado à rolagem. O custo segue a mesma
+// LEI triangular sempre (n·(n+1)/2), indiferente de qual recurso é gasto — só que
+// deslocada a partir do `custo` de cada habilidade em vez de sempre começar em 1
+// (ver `effortCost` em gameData.ts).
 const EFFORT_LEVELS = [1, 2, 3, 4]
 
 function AbilityCard({
-  icon, name, tipo, atributo, atributos, resourceEntry, description, baseValue, resultLabel, characterName,
+  icon, name, tipo, atributo, atributos, resources, resourceEntry, description, custo, ability, itemRef, characterName,
   minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource,
 }: {
   icon: string; name: string; tipo: string
   atributo: keyof Atributos | null
   atributos: Atributos
+  /** Lista completa de recursos do personagem — necessária pro resolver (Calculation pode referenciar qualquer Resource, não só o da Esforço). */
+  resources: CharacterResourceEntry[]
   resourceEntry: CharacterResourceEntry | null
   description: string
-  /** Dano/bloqueio base do item equipado (quando a ação vem de uma arma/escudo) — usado pra calcular o resultado da rolagem. */
-  baseValue?: number | null
-  resultLabel?: 'dano' | 'bloqueio' | null
+  /** Custo do 1º uso (sem Esforço) no recurso da habilidade — o Esforço desloca a partir daqui (ver `effortCost`). */
+  custo: number
+  /** Habilidade completa — necessária pro resolver percorrer a árvore de steps. */
+  ability: Ability
+  /** Item equipado na mão que originou essa ação (arma/escudo), quando houver — monta o `RollContext`. */
+  itemRef?: CharacterSheetItem | null
   characterName: string
   /** Nível mínimo de Esforço permitido agora — usado pelos ataques de mão pra forçar
    * escalada quando a OUTRA mão já atacou nesse turno (ver `onEffortUsed`). 1 = sem restrição. */
@@ -567,31 +603,46 @@ function AbilityCard({
   const { showDiceRoll } = useDiceStageContext()
 
   const baseDice = atributo ? Math.max(1, Math.round(atributos[atributo])) : 1
-  const usoLabel = atributo ? `${ATTR_LABELS[atributo] ?? atributo} em dados` : 'dados'
+
+  const weaponContext: RollContext = {
+    hits: 0,
+    weapon_base_damage: itemRef?.base_damage ?? null,
+    weapon_block_value: itemRef?.block_value ?? null,
+    weapon_weight: itemRef ? Number(itemRef.weight) : null,
+  }
+  const rangeDisplay = itemRef?.min_range != null || itemRef?.max_range != null
+    ? `${itemRef?.min_range ?? '?'}–${itemRef?.max_range ?? '?'}`
+    : computeRangeDisplay(ability, atributos, weaponContext)
 
   // O card não mostra mais o resultado da rolagem — isso tudo vai pro modal dos
   // dados 3D (showDiceRoll já conta os sucessos sozinho a partir dos valores;
   // aqui só montamos o texto: quem rolou o quê, a descrição (se tiver) e o
-  // dano/bloqueio calculado (se a ação tiver um `baseValue`, ex: arma equipada).
+  // efeito resolvido pela árvore de steps da habilidade (dano/bloqueio), se houver.
   function rollEffort(level: number) {
     const diceCount = Math.max(1, baseDice + (level - 1))
     const dice = Array.from({ length: diceCount }, () => 1 + Math.floor(Math.random() * 6))
     const successes = dice.filter(d => d >= SUCCESS_THRESHOLD).length
-    const total = baseValue != null ? (successes > 0 ? baseValue + (successes - 1) : 0) : null
 
     setActiveLevel(level)
 
-    const lines = [`${characterName} rolou ${name}`]
+    const ctx: RollContext = { ...weaponContext, hits: successes }
+    const resolvedEffects = resolveAbilityEffects(ability, atributos, resources, ctx)
+
+    const lines = []
     if (description) lines.push(description)
-    if (total !== null) {
-      const extra = successes > 1 ? ` + ${successes - 1}` : ''
-      lines.push(`${resultLabel === 'bloqueio' ? 'Bloqueio' : 'Dano'} base ${baseValue}${extra} = ${total} ${resultLabel === 'bloqueio' ? 'de bloqueio' : 'de dano'}`)
+    for (const resolved of resolvedEffects) {
+      if (resolved.behaviorSlug === 'damage') {
+        const label = ability.is_bloqueio ? 'Bloqueio' : 'Dano'
+        lines.push(`${label}${resolved.elementName ? ` (${resolved.elementName})` : ''}: ${resolved.amount}`)
+      } else {
+        lines.push(resolved.effectName)
+      }
     }
 
-    showDiceRoll(dice, lines.join('\n'), buildAppearances(dice.length))
+    showDiceRoll(dice, `${characterName} rolou ${name}`, lines.join('\n') || undefined, buildAppearances(dice.length))
 
     if (resourceEntry) {
-      const cost = triangularCost(level)
+      const cost = effortCost(custo, level)
       onSpendResource(resourceEntry.resource.slug, Math.max(0, resourceEntry.current - cost))
     }
 
@@ -609,7 +660,8 @@ function AbilityCard({
       </div>
 
       <div style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.54rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-        Uso: {baseDice} {usoLabel}
+        Teste de {atributo ? ATTR_TEST_LABELS[atributo] ?? atributo : 'atributo'}
+        {rangeDisplay !== null && <><br />Alcance: {rangeDisplay}</>}
       </div>
 
       <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.74rem', color: 'rgba(var(--text-rgb),0.55)', lineHeight: 1.55 }}>
@@ -628,7 +680,7 @@ function AbilityCard({
           </p>
           <div className="flex gap-1.5 flex-wrap">
             {EFFORT_LEVELS.map(level => {
-              const cost = triangularCost(level)
+              const cost = effortCost(custo, level)
               const active = activeLevel === level
               const usable = resourceEntry.current >= cost && level >= minEffortLevel
               return (
@@ -677,59 +729,31 @@ type ResolvedHandAction = {
   name: string
   icon: string
   tipo: string
-  atributo: keyof Atributos | null
-  resourceSlug: string | null
-  description: string
-  baseValue: number | null
-  resultLabel: 'dano' | 'bloqueio' | null
+  ability: Ability
+  itemRef: CharacterSheetItem | null
+  hand: 'main' | 'off' | 'both'
 }
 
 /**
- * Cada mão tem seu próprio "ataque", resolvido a partir do que está equipado nela:
- * sem nada → Ataque Desarmado (a habilidade inata); arma → ataque lendo o dano base
- * dela; escudo → bloqueio lendo o valor de bloqueio dele. `usa_dano_arma=false` na
- * habilidade desliga essa troca de sabor (fica sempre desarmado, mesmo com item).
+ * Cada mão tem seu próprio conjunto de ações, resolvido a partir do que está
+ * equipado nela. Quem decide o "sabor" é o próprio ITEM (`Item.abilities`,
+ * configurável por item no admin — um escudo com espinhos pode conceder tanto
+ * "Bloqueio com Escudo" quanto "Ataque com Espinhos" ao mesmo tempo, cada uma com
+ * sua própria árvore de Steps resolvida por `resolveAbilityEffects`). Sem item ou
+ * item sem `abilities`, cai na habilidade base (ex: Ataque Desarmado).
  */
-function resolveHandAction(item: CharacterSheetItem | null, unarmed: Ability, handLabel: string): ResolvedHandAction {
-  if (item && unarmed.usa_dano_arma) {
-    if (item.type === 'shield') {
-      return {
-        key: `hand-${handLabel}-block`,
-        name: `Bloqueio — ${item.name}`,
-        icon: '🛡️',
-        tipo: 'Bloqueio',
-        atributo: unarmed.atributo,
-        resourceSlug: 'estamina',
-        description: `Usa ${item.name} pra mitigar o dano do oponente. Um acerto concede ${item.block_value ?? 0} de bloqueio base, os demais +1 de redução de dano.`,
-        baseValue: item.block_value,
-        resultLabel: 'bloqueio',
-      }
-    }
+function resolveHandActions(item: CharacterSheetItem | null, base: Ability, handLabel: string, hand: 'main' | 'off' | 'both'): ResolvedHandAction[] {
+  const abilities = item && item.abilities.length > 0 ? item.abilities : [base]
 
-    return {
-      key: `hand-${handLabel}-weapon`,
-      name: `Ataque — ${item.name}`,
-      icon: '🗡️',
-      tipo: 'Ataque',
-      atributo: unarmed.atributo,
-      resourceSlug: 'estamina',
-      description: `Usa ${item.name}. 1 acerto confere ${item.base_damage ?? 0} de dano, os demais aumentam o dano em 1.`,
-      baseValue: item.base_damage,
-      resultLabel: 'dano',
-    }
-  }
-
-  return {
-    key: `hand-${handLabel}-unarmed`,
-    name: `${unarmed.name} — ${handLabel}`,
-    icon: unarmed.icon ?? '👊',
-    tipo: 'Ataque',
-    baseValue: null,
-    resultLabel: null,
-    atributo: unarmed.atributo,
-    resourceSlug: unarmed.resource?.slug ?? null,
-    description: unarmed.description,
-  }
+  return abilities.map(ability => ({
+    key: `hand-${handLabel}-${ability.slug}`,
+    name: `${ability.name}${item ? ` — ${item.name}` : ''} (${handLabel})`,
+    icon: ability.icon ?? (ability.is_bloqueio ? '🛡️' : '👊'),
+    tipo: ability.is_bloqueio ? 'Bloqueio' : 'Ataque',
+    ability,
+    itemRef: item,
+    hand,
+  }))
 }
 
 export default function CharacterSheetCard({ character }: { character: CharacterSheetData }) {
@@ -809,7 +833,7 @@ export default function CharacterSheetCard({ character }: { character: Character
   function handleAttributeTest(key: keyof Atributos, label: string) {
     const diceCount = Math.max(1, Math.round(atributos[key]))
     const dice = Array.from({ length: diceCount }, () => 1 + Math.floor(Math.random() * 6))
-    showDiceRoll(dice, `${character.name} rolou Teste de ${label}`, myAppearances(dice.length))
+    showDiceRoll(dice, `${character.name} rolou Teste de ${label}`, undefined, myAppearances(dice.length))
   }
 
   // Itens levantados aqui (não dentro do EquipmentPanel) porque a coluna de Ações
@@ -834,21 +858,21 @@ export default function CharacterSheetCard({ character }: { character: Character
     if (!character.id) return
     const characterId = character.id
 
-    ;(async () => {
-      try {
-        if (previousItem && previousItem.id !== newItemId) {
-          await updateCharacterItemSlot(characterId, previousItem.id, null, token)
+      ; (async () => {
+        try {
+          if (previousItem && previousItem.id !== newItemId) {
+            await updateCharacterItemSlot(characterId, previousItem.id, null, token)
+          }
+          if (previousOffHand && previousOffHand.id !== newItemId) {
+            await updateCharacterItemSlot(characterId, previousOffHand.id, null, token)
+          }
+          if (newItem) {
+            await updateCharacterItemSlot(characterId, newItem.id, slot, token)
+          }
+        } catch (err) {
+          console.error('Falha ao equipar item', err)
         }
-        if (previousOffHand && previousOffHand.id !== newItemId) {
-          await updateCharacterItemSlot(characterId, previousOffHand.id, null, token)
-        }
-        if (newItem) {
-          await updateCharacterItemSlot(characterId, newItem.id, slot, token)
-        }
-      } catch (err) {
-        console.error('Falha ao equipar item', err)
-      }
-    })()
+      })()
   }
 
   const topLevelTraits = character.traits.filter(t => t.prerequisite_trait_id === null)
@@ -884,8 +908,8 @@ export default function CharacterSheetCard({ character }: { character: Character
   const offHandItem = items.find(i => i.pivot.slot === 'off_hand_1') ?? null
   const isTwoHanded = Boolean(mainHandItem?.is_two_handed)
 
-  const mainHandAction = resolveHandAction(mainHandItem, unarmedAbility, isTwoHanded ? 'Duas Mãos' : 'Mão Principal')
-  const handActions = isTwoHanded ? [mainHandAction] : [mainHandAction, resolveHandAction(offHandItem, unarmedAbility, 'Mão Auxiliar')]
+  const mainHandActions = resolveHandActions(mainHandItem, unarmedAbility, isTwoHanded ? 'Duas Mãos' : 'Mão Principal', isTwoHanded ? 'both' : 'main')
+  const handActions = isTwoHanded ? mainHandActions : [...mainHandActions, ...resolveHandActions(offHandItem, unarmedAbility, 'Mão Auxiliar', 'off')]
 
   const otherAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && !a.is_passive)
   const passiveAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && a.is_passive)
@@ -906,216 +930,80 @@ export default function CharacterSheetCard({ character }: { character: Character
           🔄 Virar Turno
         </button>
       </div>
-
+      {/* Barra de identidade: Nome — Tamanho — Trilha(s). Suporta múltiplas
+              trilhas (separadas por "|") ainda que hoje só exista uma por personagem. */}
+      <h1 className="gold-glow" style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 900, color: 'var(--text)', marginBottom: '1rem' }}>
+        {character.name || '—'}
+        <span style={{ color: 'rgba(var(--text-rgb),0.35)' }}> — </span>
+        {character.size.name}
+        {character.trilha && (
+          <>
+            <span style={{ color: 'rgba(var(--text-rgb),0.35)' }}> — </span>
+            {[character.trilha.nome].join(' | ')}
+          </>
+        )}
+      </h1>
       {/* Cabeçalho — identidade + vitais */}
       <div className="parchment manuscript-ruled" style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(var(--gold-rgb),0.15)' }}>
         <div style={{ padding: '1.5rem' }}>
-          <div className="flex items-start justify-between gap-4 flex-wrap" style={{ marginBottom: '1rem' }}>
-            <div className="flex items-start gap-4">
-              <div style={{
-                width: 84, height: 84, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
-                border: '2px solid rgba(var(--gold-rgb),0.35)', background: 'var(--bg-secondary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 24px rgba(var(--gold-rgb),0.1)',
-              }}>
-                {character.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={character.avatar} alt={`Avatar de ${character.name}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.8rem', color: 'var(--gold)' }}>
-                    {character.name ? character.name.charAt(0).toUpperCase() : '?'}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h1 className="gold-glow" style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 900, color: 'var(--text)' }}>
-                  {character.name || '—'} – Nível {character.level ?? 1}
-                </h1>
-                <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.85rem', color: 'rgba(var(--text-rgb),0.55)', marginTop: '0.2rem' }}>
-                  {character.size.name}{character.species ? ` · ${character.species}` : ''}{character.age ? ` · ${character.age} estações` : ''}
-                </p>
-              </div>
+
+
+          {/* Avatar redondo + vitais (sem ícone, sem card por item) + os 4 atributos
+              primários, todos na mesma linha: [avatar] recursos [Força][Graça][Saber][Casca]. */}
+          <div className="flex items-start gap-5 flex-wrap" style={{ marginBottom: '1rem' }}>
+            <div style={{
+              width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+              border: '2px solid rgba(var(--gold-rgb),0.35)', background: 'var(--bg-secondary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 24px rgba(var(--gold-rgb),0.1)',
+            }}>
+              {character.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={character.avatar} alt={`Avatar de ${character.name}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.8rem', color: 'var(--gold)' }}>
+                  {character.name ? character.name.charAt(0).toUpperCase() : '?'}
+                </span>
+              )}
             </div>
 
-            <SustainAsidePanel
-              sustento={sustento}
-              sustentoMax={sustentoMax}
-              onSustentoToggle={handleSustentoToggle}
-              hunger={hunger}
-              onHungerToggle={next => handleResourceToggle('fome', next)}
-              deslocamento={deslocamentoVal.current}
-              deslocamentoMax={deslocamentoVal.max}
-              onDeslocamentoToggle={next => handleResourceToggle('deslocamento', next)}
-            />
-          </div>
+            <div className="flex flex-col gap-2" style={{ flex: '1 1 240px', justifyContent: 'center' }}>
+              <VitalLine icon="❤️" emptyIcon="🤍" label="Coração" current={coracaoVal.current} max={coracaoVal.max} color="var(--error)" onToggle={next => handleResourceToggle('coracao', next)} />
+              <VitalLine icon="🔮" emptyIcon="⚪" label="Alma" current={almaVal.current} max={almaVal.max} color="var(--void-glow)" onToggle={next => handleResourceToggle('alma', next)} />
+              <VitalLine icon="⚡" emptyIcon="◽" label="Estamina" current={estaminaVal.current} max={estaminaVal.max} color="var(--gold)" onToggle={next => handleResourceToggle('estamina', next)} />
+            </div>
 
-          <div className="flex gap-3 flex-wrap">
-            <VitalBox icon="❤️" emptyIcon="🤍" label="Coração" current={coracaoVal.current} max={coracaoVal.max} color="var(--error)" colorRgb="var(--error-rgb)" onToggle={next => handleResourceToggle('coracao', next)} />
-            <VitalBox icon="⚡" emptyIcon="◽" label="Estamina" current={estaminaVal.current} max={estaminaVal.max} color="var(--gold)" colorRgb="var(--gold-rgb)" onToggle={next => handleResourceToggle('estamina', next)} />
-            <VitalBox icon="🔮" emptyIcon="⚪" label="Alma" current={almaVal.current} max={almaVal.max} color="var(--void-glow)" colorRgb="var(--void-light-rgb)" onToggle={next => handleResourceToggle('alma', next)} />
-          </div>
-
-          <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.62rem', color: 'rgba(var(--text-rgb),0.4)', textAlign: 'center', marginTop: '0.6rem' }}>
-            › Clique nos recursos para ajustar o valor atual.
-          </p>
-        </div>
-      </div>
-
-      {/* Corpo: três colunas — Atributos | Ações | Inventário/Traços/Flavor */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_820px_1fr] gap-5">
-        {/* Coluna esquerda: atributos + barras + trilha */}
-        <div className="flex flex-col gap-4">
-          <div className="ddb-panel p-5">
-            <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Atributos Primários</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-4 gap-2" style={{ flex: '2 1 380px' }}>
               {PRIMARY_ATTRS.map(([key, label, icon]) => (
                 <AttrCard key={key} icon={icon} label={label} value={atributos[key]} onClick={() => handleAttributeTest(key, label)} />
               ))}
             </div>
-          </div>
-
-          <div className="ddb-panel p-4">
-            <h2 className="ddb-section-title" style={{ marginBottom: '0.75rem' }}>Sociais</h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {SOCIAL_ATTRS.map(([key, label, icon]) => (
                 <IconRow key={key} icon={icon} label={label} value={atributos[key]} />
               ))}
             </div>
           </div>
 
-          {character.trilha && trilhaCfg && (
-            <div className="ddb-panel p-4" style={{ borderColor: trilhaCfg.border }}>
-              <h2 className="ddb-section-title flex items-center gap-2" style={{ marginBottom: '0.6rem' }}>
-                <span>{trilhaCfg.icon}</span> Trilha
-              </h2>
-              <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', fontWeight: 700, color: trilhaCfg.color, marginBottom: '0.5rem' }}>
-                {character.trilha.nome} {character.trilha.nivel ? `· Nv ${character.trilha.nivel}` : ''}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {beneficiosLines.map((line, i) => (
-                  <p key={i} style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.8rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.6, display: 'flex', gap: '0.4rem' }}>
-                    <span style={{ color: trilhaCfg.color, flexShrink: 0 }}>◆</span> {line}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Coluna do meio: ações (habilidades + esforço, rola nos dados 3D) */}
+      {/* Corpo: três colunas — Atributos | Ações | Inventário/Traços/Flavor */}
+      <div className="grid grid-cols-1 lg:grid-cols-[450px_820px_1fr] gap-5">
+
+
+        {/* Inventário, traços, flavor */}
         <div className="flex flex-col gap-4">
-          <div className="ddb-panel p-5">
-            <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Ações</h2>
-            <div className="flex flex-wrap gap-3">
-              {handActions.map((action, idx) => {
-                const hand: 'main' | 'off' | 'both' = isTwoHanded ? 'both' : idx === 0 ? 'main' : 'off'
-                const isAttack = action.tipo === 'Ataque'
-                const alreadyAttacked = hand === 'both'
-                  ? mainHandAttacked || offHandAttacked
-                  : hand === 'main' ? mainHandAttacked : offHandAttacked
-
-                return (
-                  <AbilityCard
-                    key={action.key}
-                    icon={action.icon}
-                    name={action.name}
-                    tipo={action.tipo}
-                    atributo={action.atributo}
-                    atributos={atributos}
-                    resourceEntry={findResourceEntry(resources, action.resourceSlug)}
-                    description={action.description}
-                    baseValue={action.baseValue}
-                    resultLabel={action.resultLabel}
-                    characterName={character.name}
-                    minEffortLevel={isAttack ? minAttackLevel : 1}
-                    onEffortUsed={isAttack ? (level: number) => registerHandAttack(hand, level) : undefined}
-                    locked={isAttack && alreadyAttacked}
-                    buildAppearances={myAppearances}
-                    onSpendResource={handleResourceToggle}
-                  />
-                )
-              })}
-              {otherAbilities.map(ability => (
-                <AbilityCard
-                  key={ability.id}
-                  icon={ability.icon || '✨'}
-                  name={ability.name}
-                  tipo="Habilidade"
-                  atributo={ability.atributo}
-                  atributos={atributos}
-                  resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
-                  description={ability.description}
-                  characterName={character.name}
-                  buildAppearances={myAppearances}
-                  onSpendResource={handleResourceToggle}
-                />
-              ))}
-            </div>
-
-            {passiveAbilities.length > 0 && (
-              <div style={{ marginTop: '1.25rem' }}>
-                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
-                  Passivas
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {passiveAbilities.map(ability => (
-                    <div key={ability.id} className="card" style={{ padding: '0.7rem 0.9rem', borderRadius: 8, width: 244, flexShrink: 0 }}>
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span>{ability.icon || '✨'}</span>
-                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>{ability.name}</span>
-                        <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.4rem' }}>Passiva</span>
-                      </div>
-                      <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.72rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.5 }}>
-                        {ability.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {character.trilha && character.trilha.abilities && character.trilha.abilities.length > 0 && (
-              <div style={{ marginTop: '1.25rem' }}>
-                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
-                  Habilidades de Trilha
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {character.trilha.abilities.map(ability => (
-                    ability.is_passive ? (
-                      <div key={ability.id} className="card" style={{ padding: '0.7rem 0.9rem', borderRadius: 8, width: 244, flexShrink: 0 }}>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span>{ability.icon || '✨'}</span>
-                          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>{ability.name}</span>
-                          <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.4rem' }}>Passiva</span>
-                        </div>
-                        <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.72rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.5 }}>
-                          {ability.description}
-                        </p>
-                      </div>
-                    ) : (
-                      <AbilityCard
-                        key={ability.id}
-                        icon={ability.icon || '✨'}
-                        name={ability.name}
-                        tipo="Habilidade"
-                        atributo={ability.atributo}
-                        atributos={atributos}
-                        resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
-                        description={ability.description}
-                        characterName={character.name}
-                        buildAppearances={myAppearances}
-                        onSpendResource={handleResourceToggle}
-                      />
-                    )
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="flex gap-3 flex-wrap">
+            <MealsHungerCard
+              sustento={sustento}
+              sustentoMax={sustentoMax}
+              onSustentoToggle={handleSustentoToggle}
+              hunger={hunger}
+              onHungerToggle={next => handleResourceToggle('fome', next)}
+            />
+            <VitalBox icon="👣" emptyIcon="⚪" label="Deslocamento" current={deslocamentoVal.current} max={deslocamentoVal.max} color="var(--gold)" colorRgb="var(--gold-rgb)" onToggle={next => handleResourceToggle('deslocamento', next)} />
           </div>
-        </div>
-
-        {/* Coluna direita: inventário, traços, flavor */}
-        <div className="flex flex-col gap-4">
           {/* Inventário */}
           <div className="ddb-panel p-5">
             <div className="flex items-center justify-between mb-1" style={{ marginBottom: '1rem' }}>
@@ -1213,37 +1101,129 @@ export default function CharacterSheetCard({ character }: { character: Character
             </div>
           )}
 
-          {/* Aparência / História */}
-          {(character.appearance || character.story) && (
-            <div className="ddb-panel p-5">
-              <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Aparência & História</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {character.appearance && (
-                  <div>
-                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                      Aparência
-                    </p>
-                    <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.85rem', color: 'rgba(var(--text-rgb),0.6)', lineHeight: 1.75 }}>
-                      {character.appearance}
-                    </p>
-                    <div className="flex justify-end" style={{ marginTop: '0.4rem' }}>🪶</div>
-                  </div>
-                )}
-                {character.story && (
-                  <div>
-                    <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                      História
-                    </p>
-                    <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.85rem', color: 'rgba(var(--text-rgb),0.6)', lineHeight: 1.75 }}>
-                      {character.story}
-                    </p>
-                    <div className="flex justify-end" style={{ marginTop: '0.4rem' }}>🪶</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+
+
         </div>
+        {/* Ações (habilidades + esforço, rola nos dados 3D) */}
+        <div className="flex flex-col gap-4">
+          <div className="ddb-panel p-5">
+            <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Ações</h2>
+            <div className="flex flex-wrap gap-3">
+              {handActions.map(action => {
+                const isAttack = action.tipo === 'Ataque'
+                const alreadyAttacked = action.hand === 'both'
+                  ? mainHandAttacked || offHandAttacked
+                  : action.hand === 'main' ? mainHandAttacked : offHandAttacked
+
+                return (
+                  <AbilityCard
+                    key={action.key}
+                    icon={action.icon}
+                    name={action.name}
+                    tipo={action.tipo}
+                    atributo={action.ability.atributo}
+                    atributos={atributos}
+                    resources={resources}
+                    resourceEntry={findResourceEntry(resources, action.ability.resource?.slug)}
+                    description={action.ability.description}
+                    custo={action.ability.custo}
+                    ability={action.ability}
+                    itemRef={action.itemRef}
+                    characterName={character.name}
+                    minEffortLevel={isAttack ? minAttackLevel : 1}
+                    onEffortUsed={isAttack ? (level: number) => registerHandAttack(action.hand, level) : undefined}
+                    locked={isAttack && alreadyAttacked}
+                    buildAppearances={myAppearances}
+                    onSpendResource={handleResourceToggle}
+                  />
+                )
+              })}
+              {otherAbilities.map(ability => (
+                <AbilityCard
+                  key={ability.id}
+                  icon={ability.icon || '✨'}
+                  name={ability.name}
+                  tipo="Habilidade"
+                  atributo={ability.atributo}
+                  atributos={atributos}
+                  resources={resources}
+                  resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
+                  description={ability.description}
+                  custo={ability.custo}
+                  ability={ability}
+                  characterName={character.name}
+                  buildAppearances={myAppearances}
+                  onSpendResource={handleResourceToggle}
+                />
+              ))}
+            </div>
+
+            {passiveAbilities.length > 0 && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                  Passivas
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {passiveAbilities.map(ability => (
+                    <div key={ability.id} className="card" style={{ padding: '0.7rem 0.9rem', borderRadius: 8, width: 244, flexShrink: 0 }}>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span>{ability.icon || '✨'}</span>
+                        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>{ability.name}</span>
+                        <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.4rem' }}>Passiva</span>
+                      </div>
+                      <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.72rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.5 }}>
+                        {ability.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {character.trilha && character.trilha.abilities && character.trilha.abilities.length > 0 && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.5rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                  Habilidades de Trilha
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {character.trilha.abilities.map(ability => (
+                    ability.is_passive ? (
+                      <div key={ability.id} className="card" style={{ padding: '0.7rem 0.9rem', borderRadius: 8, width: 244, flexShrink: 0 }}>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span>{ability.icon || '✨'}</span>
+                          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text)' }}>{ability.name}</span>
+                          <span className="ddb-badge ddb-badge-dim" style={{ fontSize: '0.4rem' }}>Passiva</span>
+                        </div>
+                        <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.72rem', color: 'rgba(var(--text-rgb),0.5)', lineHeight: 1.5 }}>
+                          {ability.description}
+                        </p>
+                      </div>
+                    ) : (
+                      <AbilityCard
+                        key={ability.id}
+                        icon={ability.icon || '✨'}
+                        name={ability.name}
+                        tipo="Habilidade"
+                        atributo={ability.atributo}
+                        atributos={atributos}
+                        resources={resources}
+                        resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
+                        description={ability.description}
+                        custo={ability.custo}
+                        ability={ability}
+                        characterName={character.name}
+                        buildAppearances={myAppearances}
+                        onSpendResource={handleResourceToggle}
+                      />
+                    )
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+
       </div>
     </div>
   )

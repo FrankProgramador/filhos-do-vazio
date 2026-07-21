@@ -23,6 +23,8 @@ declare module '@3d-dice/dice-box-threejs' {
     theme_texture?: string
     strength?: number
     gravity_multiplier?: number
+    sounds?: boolean
+    volume?: number
     onRollComplete?: (result: DiceBoxRollResult) => void
   }
 

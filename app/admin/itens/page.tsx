@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/lib/auth-context'
 import { ApiError } from '@/app/lib/api'
-import { adminItems, type ItemPayload } from '@/app/lib/adminData'
-import type { Item } from '@/app/lib/gameData'
+import { adminAbilities, adminItems, type ItemPayload } from '@/app/lib/adminData'
+import type { Ability, Item } from '@/app/lib/gameData'
 import { AdminTable, ConfirmButton, Field, Input, Select, Td, Textarea, Tr } from '../AdminUI'
 
 const TYPES: Item['type'][] = ['weapon', 'armor', 'shield', 'tool', 'consumable', 'accessory', 'other']
@@ -14,24 +14,50 @@ const TYPE_LABELS: Record<Item['type'], string> = {
 
 const EMPTY: ItemPayload = {
   name: '', slug: '', description: '', weight: 1, quality: '', base_price: 10, durability: null, is_consumable: false, type: 'weapon', image: '',
-  base_damage: null, block_value: null, is_two_handed: false,
+  base_damage: null, block_value: null, is_two_handed: false, ability_ids: [],
+  min_range: null, max_range: null, parent_item_id: null,
 }
 
 export default function AdminItensPage() {
   const { token } = useAuth()
   const [items, setItems] = useState<Item[]>([])
+  const [abilities, setAbilities] = useState<Ability[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<ItemPayload>(EMPTY)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const load = () => adminItems.list(token).then(setItems).finally(() => setLoading(false))
+  const load = () => {
+    adminAbilities.list(token).then(setAbilities)
+    return adminItems.list(token).then(setItems).finally(() => setLoading(false))
+  }
   useEffect(() => { load() }, [token])
 
   function startCreate() { setEditingId(0); setForm(EMPTY); setError(null) }
-  function startEdit(item: Item) { setEditingId(item.id); setForm({ ...item }); setError(null) }
+  function startEdit(item: Item) {
+    const { id, abilities, ...rest } = item
+    setEditingId(id)
+    setForm({ ...rest, ability_ids: abilities.map(a => a.id) })
+    setError(null)
+  }
   function cancel() { setEditingId(null); setForm(EMPTY); setError(null) }
+
+  function duplicateFrom(sourceId: number) {
+    const source = items.find(i => i.id === sourceId)
+    if (!source) return
+    const { id, abilities, ...rest } = source
+    setForm({ ...rest, name: `${source.name} (cópia)`, slug: '', ability_ids: abilities.map(a => a.id), parent_item_id: source.id })
+  }
+
+  function toggleAbility(abilityId: number) {
+    setForm({
+      ...form,
+      ability_ids: form.ability_ids.includes(abilityId)
+        ? form.ability_ids.filter(id => id !== abilityId)
+        : [...form.ability_ids, abilityId],
+    })
+  }
 
   async function save() {
     setSaving(true)
@@ -71,7 +97,17 @@ export default function AdminItensPage() {
           <h2 style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.9rem', color: 'var(--gold)', marginBottom: '1rem' }}>
             {editingId ? 'Editar Item' : 'Novo Item'}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+          {!editingId && items.length > 0 && (
+            <Field label="Duplicar de...">
+              <Select value="" onChange={e => e.target.value && duplicateFrom(Number(e.target.value))}>
+                <option value="">— começar do zero —</option>
+                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </Select>
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ marginTop: '0.75rem' }}>
             <Field label="Nome" required><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
             <Field label="Slug" required><Input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} /></Field>
             <Field label="Tipo" required>
@@ -86,6 +122,20 @@ export default function AdminItensPage() {
             <Field label="Imagem"><Input value={form.image ?? ''} onChange={e => setForm({ ...form, image: e.target.value })} /></Field>
             <Field label="Dano base (arma)"><Input type="number" value={form.base_damage ?? ''} onChange={e => setForm({ ...form, base_damage: e.target.value ? Number(e.target.value) : null })} /></Field>
             <Field label="Bloqueio base (escudo)"><Input type="number" value={form.block_value ?? ''} onChange={e => setForm({ ...form, block_value: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Alcance mínimo"><Input type="number" min={0} value={form.min_range ?? ''} onChange={e => setForm({ ...form, min_range: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Alcance máximo"><Input type="number" min={0} value={form.max_range ?? ''} onChange={e => setForm({ ...form, max_range: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <div className="md:col-span-2">
+              <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Habilidades ao equipar</span>
+              <div className="flex flex-wrap gap-3" style={{ marginTop: '0.4rem' }}>
+                {abilities.length === 0 && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nenhuma habilidade cadastrada.</p>}
+                {abilities.map(a => (
+                  <div key={a.id} className="flex items-center gap-2">
+                    <input type="checkbox" id={`ability-${a.id}`} checked={form.ability_ids.includes(a.id)} onChange={() => toggleAbility(a.id)} />
+                    <label htmlFor={`ability-${a.id}`} style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>{a.name}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-2" style={{ paddingTop: '1.5rem' }}>
               <input type="checkbox" id="is_consumable" checked={form.is_consumable} onChange={e => setForm({ ...form, is_consumable: e.target.checked })} />
               <label htmlFor="is_consumable" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)' }}>Consumível</label>

@@ -723,7 +723,12 @@ export default function Arena({ character, onExit }: { character: Character; onE
           })
         )
 
-        diceStage.showDiceRoll(rolls, result.hit ? `Você causou ${result.damage} de dano em ${target.label}.` : 'Você errou o ataque.', myAppearances(rolls.length))
+        diceStage.showDiceRoll(
+          rolls,
+          `${attacker.label} usa ${selectedAttack.option.label}`,
+          result.hit ? `Você causou ${result.damage} de dano em ${target.label}.` : 'Você errou o ataque.',
+          myAppearances(rolls.length)
+        )
         if (result.hit) triggerHitEffect(target.id)
 
         const message = result.hit
@@ -872,7 +877,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
       setTurn(t => t + 1)
       if (attack) {
         const resultText = attack.result.hit ? `Você sofreu ${attack.result.damage} de dano.` : 'O inimigo errou o ataque.'
-        diceStage.showDiceRoll(attack.rolls, resultText, defaultAppearances(attack.rolls.length))
+        diceStage.showDiceRoll(attack.rolls, `${currentEnemy?.label ?? 'Inimigo'} ataca`, resultText, defaultAppearances(attack.rolls.length))
         if (attack.result.hit) triggerHitEffect(attack.targetId)
       }
       if (enemyLogMessage) logEvent(enemyLogMessage)
