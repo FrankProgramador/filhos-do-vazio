@@ -164,7 +164,12 @@ export type SimpleAttackAmountSource =
   | { kind: 'attribute'; attribute_id: number | null; multiplier: number | null }
 
 export type SimpleAttackAction =
-  | { type: 'damage'; amount: SimpleAttackAmountSource; element_id: number | null; cap_attribute_id: number | null }
+  | {
+      type: 'damage'; amount: SimpleAttackAmountSource; element_id: number | null; cap_attribute_id: number | null
+      /** Cada acerto além do primeiro soma +1 no dano — igual Ataque com Arma/Bloqueio com
+       * Escudo. Pra `weapon_damage`/`weapon_block` isso já é sempre assim (ignorado aqui). */
+      extra_successes: boolean
+    }
   | { type: 'apply_condition'; condition_id: number | null; owner: StepConditionOwnerValue }
 
 export type SimpleAttackConditionSource =
@@ -184,8 +189,45 @@ export type SimpleAttackAbilityPayload = {
   atributo: 'poder' | 'graca' | 'casca' | 'saber'
   resource_id: number | null
   custo: number
+  cooldown_base: number | null
   base_rule: SimpleAttackRulePayload
   extra_rules: SimpleAttackExtraRulePayload[]
+}
+
+/**
+ * `SimpleAttackAction`/`SimpleAttackConditionSource` usam `kind` (discriminated union,
+ * bom pros pickers do editor). O backend (`AdminAbilityController::damageComponents` /
+ * `conditionFromSimpleSource`) espera os campos "achatados" — `amount_source`/
+ * `fixed_value`/`attribute_id`/`multiplier` soltos em `action`, e `source` (não `kind`)
+ * em `condition`. Achata só aqui, na borda da rede, pra o editor não precisar saber
+ * do formato de fio.
+ */
+function simpleAttackActionToApi(action: SimpleAttackAction): Record<string, unknown> {
+  if (action.type === 'apply_condition') return action
+
+  const { amount, ...rest } = action
+  const amountFields =
+    amount.kind === 'fixed' ? { amount_source: 'fixed', fixed_value: amount.value }
+    : amount.kind === 'attribute' ? { amount_source: 'attribute', attribute_id: amount.attribute_id, multiplier: amount.multiplier }
+    : { amount_source: amount.kind } // weapon_damage / weapon_block — sem campos extra
+
+  return { ...rest, ...amountFields }
+}
+
+function simpleAttackConditionToApi(condition: SimpleAttackConditionSource): Record<string, unknown> {
+  const { kind, ...rest } = condition
+  return { source: kind, ...rest }
+}
+
+function simpleAttackPayloadToApi(data: SimpleAttackAbilityPayload) {
+  return {
+    ...data,
+    base_rule: { action: simpleAttackActionToApi(data.base_rule.action) },
+    extra_rules: data.extra_rules.map(r => ({
+      condition: simpleAttackConditionToApi(r.condition),
+      action: simpleAttackActionToApi(r.action),
+    })),
+  }
 }
 
 export const adminAbilities = {
@@ -197,9 +239,12 @@ export const adminAbilities = {
   remove: (token: string | null, id: number) =>
     authed<{ message: string }>(`/api/admin/abilities/${id}`, token, { method: 'DELETE' }),
   createSimpleAttack: (token: string | null, data: SimpleAttackAbilityPayload) =>
-    authed<Ability>('/api/admin/abilities/simple-attack', token, { method: 'POST', body: JSON.stringify(data) }),
+    authed<Ability>('/api/admin/abilities/simple-attack', token, { method: 'POST', body: JSON.stringify(simpleAttackPayloadToApi(data)) }),
   updateSimpleAttack: (token: string | null, id: number, data: SimpleAttackAbilityPayload) =>
-    authed<Ability>(`/api/admin/abilities/${id}/simple-attack`, token, { method: 'PUT', body: JSON.stringify(data) }),
+    authed<Ability>(`/api/admin/abilities/${id}/simple-attack`, token, { method: 'PUT', body: JSON.stringify(simpleAttackPayloadToApi(data)) }),
+  /** Atalho de teste: concede a habilidade a todos os personagens já criados. */
+  grantToAll: (token: string | null, id: number) =>
+    authed<{ message: string }>(`/api/admin/abilities/${id}/grant-all`, token, { method: 'POST' }),
 }
 
 // ── Attributes ───────────────────────────────────────────────────────────

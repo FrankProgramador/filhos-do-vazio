@@ -15,7 +15,7 @@ import { Field, Input, Select, Textarea } from '../AdminUI'
 import { ATRIBUTO_LABELS, ATRIBUTOS, type AtributoRolavel, OPERATOR_LABELS, OPERATORS, OWNER_LABELS, OWNERS } from './shared'
 
 function emptyDamageAction(): SimpleAttackAction {
-  return { type: 'damage', amount: { kind: 'fixed', value: 1 }, element_id: null, cap_attribute_id: null }
+  return { type: 'damage', amount: { kind: 'fixed', value: 1 }, element_id: null, cap_attribute_id: null, extra_successes: false }
 }
 
 function emptyExtraRule(): SimpleAttackExtraRulePayload {
@@ -25,7 +25,7 @@ function emptyExtraRule(): SimpleAttackExtraRulePayload {
 function emptyForm(): SimpleAttackAbilityPayload {
   return {
     name: '', slug: '', description: '', icon: '', display_order: 0,
-    atributo: 'poder', resource_id: null, custo: 1,
+    atributo: 'poder', resource_id: null, custo: 1, cooldown_base: null,
     base_rule: { action: emptyDamageAction() },
     extra_rules: [],
   }
@@ -37,7 +37,7 @@ function emptyForm(): SimpleAttackAbilityPayload {
  * 3 formatos conhecidos (a habilidade foi mexida no editor avançado), retorna `null` e
  * quem chama cai pro aviso de "modo avançado".
  */
-function amountFromComponents(components: CalculationComponent[]): { amount: SimpleAttackAmountSource; capAttributeId: number | null } | null {
+function amountFromComponents(components: CalculationComponent[]): { amount: SimpleAttackAmountSource; capAttributeId: number | null; extraSuccesses: boolean } | null {
   let comps = [...components].sort((a, b) => a.order - b.order)
   let capAttributeId: number | null = null
 
@@ -47,10 +47,9 @@ function amountFromComponents(components: CalculationComponent[]): { amount: Sim
     comps = comps.slice(0, -1)
   }
 
-  if (comps.length === 1 && comps[0].operation === 'add' && comps[0].source_type === 'fixed_value') {
-    return { amount: { kind: 'fixed', value: comps[0].value ?? 0 }, capAttributeId }
-  }
-
+  // Arma/escudo já embutem "+hits -1" sempre — checa esse formato exato antes de
+  // tentar tirar o sufixo de sucessos extras (senão os 3 componentes viram 1 só e
+  // o reconhecimento de weapon_damage/weapon_block abaixo nunca bate).
   if (
     comps.length === 3 &&
     comps[0].operation === 'add' && comps[0].source_type === 'context' &&
@@ -58,13 +57,29 @@ function amountFromComponents(components: CalculationComponent[]): { amount: Sim
     comps[1].operation === 'add' && comps[1].source_type === 'context' && comps[1].context_key === 'hits' &&
     comps[2].operation === 'subtract' && comps[2].source_type === 'fixed_value'
   ) {
-    return { amount: { kind: comps[0].context_key === 'weapon_base_damage' ? 'weapon_damage' : 'weapon_block' }, capAttributeId }
+    return { amount: { kind: comps[0].context_key === 'weapon_base_damage' ? 'weapon_damage' : 'weapon_block' }, capAttributeId, extraSuccesses: false }
+  }
+
+  // Sufixo opcional "+hits -1" (fonte fixa/atributo com "sucessos extras aumentam
+  // o dano" marcado) — tira antes de reconhecer a fonte em si.
+  let extraSuccesses = false
+  const [maybeHits, maybeSub] = comps.slice(-2)
+  if (
+    maybeHits?.operation === 'add' && maybeHits.source_type === 'context' && maybeHits.context_key === 'hits' &&
+    maybeSub?.operation === 'subtract' && maybeSub.source_type === 'fixed_value'
+  ) {
+    extraSuccesses = true
+    comps = comps.slice(0, -2)
+  }
+
+  if (comps.length === 1 && comps[0].operation === 'add' && comps[0].source_type === 'fixed_value') {
+    return { amount: { kind: 'fixed', value: comps[0].value ?? 0 }, capAttributeId, extraSuccesses }
   }
 
   if (comps.length >= 1 && comps.length <= 2 && comps[0].operation === 'add' && comps[0].source_type === 'attribute' && comps[0].source_id !== null) {
     const multiplierComp = comps[1]
     const multiplier = multiplierComp && multiplierComp.operation === 'multiply' && multiplierComp.source_type === 'fixed_value' ? multiplierComp.value : null
-    return { amount: { kind: 'attribute', attribute_id: comps[0].source_id, multiplier }, capAttributeId }
+    return { amount: { kind: 'attribute', attribute_id: comps[0].source_id, multiplier }, capAttributeId, extraSuccesses }
   }
 
   return null
@@ -77,7 +92,7 @@ function actionFromStepEffect(se: AbilityStepEffect, conditions: Condition[]): S
     if (!se.calculation) return null
     const parsed = amountFromComponents(se.calculation.components)
     if (!parsed) return null
-    return { type: 'damage', amount: parsed.amount, element_id: se.effect.element_id, cap_attribute_id: parsed.capAttributeId }
+    return { type: 'damage', amount: parsed.amount, element_id: se.effect.element_id, cap_attribute_id: parsed.capAttributeId, extra_successes: parsed.extraSuccesses }
   }
 
   if (behaviorSlug === 'apply_condition') {
@@ -149,6 +164,7 @@ function abilityToSimpleAttackForm(ability: Ability, conditions: Condition[]): S
     atributo: (ability.atributo as AtributoRolavel | null) ?? 'poder',
     resource_id: ability.resource?.id ?? null,
     custo: ability.custo,
+    cooldown_base: ability.cooldown_base ?? null,
     base_rule: { action: baseAction },
     extra_rules: extraRules,
   }
@@ -156,6 +172,7 @@ function abilityToSimpleAttackForm(ability: Ability, conditions: Condition[]): S
 
 function AmountSourcePicker({
   value, onChange, attributes, elements, capAttributeId, onCapChange, elementId, onElementChange,
+  extraSuccesses, onExtraSuccessesChange,
 }: {
   value: SimpleAttackAmountSource
   onChange: (v: SimpleAttackAmountSource) => void
@@ -165,6 +182,8 @@ function AmountSourcePicker({
   onCapChange: (v: number | null) => void
   elementId: number | null
   onElementChange: (v: number | null) => void
+  extraSuccesses: boolean
+  onExtraSuccessesChange: (v: boolean) => void
 }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -206,6 +225,13 @@ function AmountSourcePicker({
             style={{ width: 110 }}
           />
         </>
+      )}
+
+      {value.kind !== 'weapon_damage' && value.kind !== 'weapon_block' && (
+        <label className="flex items-center gap-1.5" style={{ cursor: 'pointer', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <input type="checkbox" checked={extraSuccesses} onChange={e => onExtraSuccessesChange(e.target.checked)} />
+          Sucessos extras aumentam o dano (+1 cada)
+        </label>
       )}
 
       <Select value={elementId ?? ''} onChange={e => onElementChange(e.target.value ? Number(e.target.value) : null)} style={{ width: 160 }}>
@@ -257,6 +283,8 @@ function ActionPicker({
           onCapChange={cap_attribute_id => onChange({ ...value, cap_attribute_id })}
           elementId={value.element_id}
           onElementChange={element_id => onChange({ ...value, element_id })}
+          extraSuccesses={value.extra_successes}
+          onExtraSuccessesChange={extra_successes => onChange({ ...value, extra_successes })}
         />
       ) : (
         <>
@@ -346,6 +374,7 @@ export default function SimpleAttackEditor({
   const [form, setForm] = useState<SimpleAttackAbilityPayload>(reconstructed ?? emptyForm())
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [grantAll, setGrantAll] = useState(false)
 
   if (unsupported) {
     return (
@@ -373,8 +402,10 @@ export default function SimpleAttackEditor({
     setSaving(true)
     setError(null)
     try {
-      if (ability) await adminAbilities.updateSimpleAttack(token, ability.id, form)
-      else await adminAbilities.createSimpleAttack(token, form)
+      const saved = ability
+        ? await adminAbilities.updateSimpleAttack(token, ability.id, form)
+        : await adminAbilities.createSimpleAttack(token, form)
+      if (grantAll) await adminAbilities.grantToAll(token, saved.id)
       onSaved()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao salvar.')
@@ -411,6 +442,15 @@ export default function SimpleAttackEditor({
           <Field label="Custo" required>
             <Input type="number" min={1} value={form.custo} onChange={e => setForm({ ...form, custo: Number(e.target.value) })} style={{ width: 80 }} />
           </Field>
+          <Field label="Cooldown (turnos)">
+            <Input
+              type="number" min={0}
+              value={form.cooldown_base ?? ''}
+              onChange={e => setForm({ ...form, cooldown_base: e.target.value ? Number(e.target.value) : null })}
+              placeholder="Sem cooldown"
+              style={{ width: 110 }}
+            />
+          </Field>
         </div>
         <div className="md:col-span-2">
           <Field label="Descrição" required><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
@@ -446,7 +486,12 @@ export default function SimpleAttackEditor({
         <button onClick={addExtraRule} className="ddb-badge ddb-badge-dim" style={{ border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}>+ Adicionar condição</button>
       </div>
 
-      <div className="flex items-center gap-2" style={{ marginTop: '1.25rem' }}>
+      <label className="flex items-center gap-2" style={{ marginTop: '1.25rem', cursor: 'pointer', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <input type="checkbox" checked={grantAll} onChange={e => setGrantAll(e.target.checked)} />
+        Conceder a todos os personagens ao salvar (atalho de teste)
+      </label>
+
+      <div className="flex items-center gap-2" style={{ marginTop: '0.75rem' }}>
         <button onClick={save} disabled={saving} className="btn-hero" style={{ fontSize: '0.7rem', padding: '0.55rem 1.3rem' }}>{saving ? 'Salvando...' : 'Salvar'}</button>
         <button onClick={onCancel} className="hk-btn hk-btn-soul" style={{ fontSize: '0.7rem', padding: '0.55rem 1.3rem', borderRadius: 6 }}>Cancelar</button>
       </div>

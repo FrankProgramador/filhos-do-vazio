@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
+import { DiceStageProvider } from '@/components/dashboard/DiceStageContext'
 import { useAuth } from '@/app/lib/auth-context'
 import { apiFetch, ApiError } from '@/app/lib/api'
 import {
@@ -288,6 +289,7 @@ export default function CriarPersonagem() {
   }
 
   return (
+    <DiceStageProvider>
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <SiteHeader activePath="/criar-personagem" />
 
@@ -441,5 +443,6 @@ export default function CriarPersonagem() {
         </div>
       </div>
     </div>
+    </DiceStageProvider>
   )
 }
