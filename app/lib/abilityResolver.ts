@@ -243,3 +243,24 @@ export function computeRangeDisplay(ability: Ability, atributos: Atributos, ctx:
   if (!ability.range_calculation) return null
   return resolveCalculation(ability.range_calculation, atributos, [], ctx)
 }
+
+/**
+ * true se algum Cálculo da árvore de Steps `on_attack` da habilidade lê
+ * `weapon_base_damage`/`weapon_block_value` do contexto (fonte "Dano/Bloqueio da
+ * arma equipada" no editor de Ataque simples) — nesse caso a habilidade não faz
+ * sentido sem uma arma equipada (o cálculo sempre resolveria pra 0). Usado pra
+ * desabilitar o card na ficha em vez de deixar rolar um dano/bloqueio que nunca
+ * existiu. Percorre TODOS os steps (raiz + filhos), não só o primeiro efeito.
+ */
+export function abilityRequiresWeapon(ability: Ability): boolean {
+  function stepNeedsWeapon(step: AbilityStep): boolean {
+    const ownEffect = step.step_effects.some(se =>
+      se.calculation?.components.some(c =>
+        c.source_type === 'context' && (c.context_key === 'weapon_base_damage' || c.context_key === 'weapon_block_value')
+      ) ?? false
+    )
+    return ownEffect || step.child_steps.some(stepNeedsWeapon)
+  }
+
+  return ability.steps.some(stepNeedsWeapon)
+}

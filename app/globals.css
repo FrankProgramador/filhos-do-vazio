@@ -1476,3 +1476,35 @@ body {
   visibility: visible;
 }
 
+/* ─── Card aberto pela barra de ação — sobe de baixo com fade (ficha de personagem) ── */
+
+@keyframes action-card-pop-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+.action-card-pop-in {
+  animation: action-card-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes action-card-backdrop-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.action-card-modal-backdrop {
+  animation: action-card-backdrop-fade-in 0.15s ease-out;
+}
+
+.action-bar-icon-btn {
+  transition: transform 0.18s ease;
+}
+
+.action-bar-icon-btn:hover {
+  transform: scale(1.5);
+}
+
+.action-bar-icon-btn:disabled:hover {
+  transform: none;
+}
+

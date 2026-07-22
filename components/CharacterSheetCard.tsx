@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { cloneElement, useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import {
   effortCost, fetchMyDiceSkins, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
   type Ability, type Atributos, type CharacterResourceEntry, type GameTrait, type Item, type OwnedDiceSkin,
@@ -10,7 +10,7 @@ import { useAuth } from '@/app/lib/auth-context'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
 import { DICE_APPEARANCE_DEFAULT, SUCCESS_THRESHOLD } from '@/app/painel/jogo/shared'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
-import { computeRangeDisplay, resolveAbilityEffects, type RollContext } from '@/app/lib/abilityResolver'
+import { abilityRequiresWeapon, computeRangeDisplay, resolveAbilityEffects, type RollContext } from '@/app/lib/abilityResolver'
 
 /**
  * Forma normalizada de dados que tanto a ficha salva (`/painel/personagens/[id]`)
@@ -572,7 +572,7 @@ const EFFORT_LEVELS = [1, 2, 3, 4]
 
 function AbilityCard({
   icon, name, tipo, atributo, atributos, resources, resourceEntry, description, custo, ability, itemRef, characterName,
-  minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource,
+  minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource, diceModifier = 0, onRoll,
 }: {
   icon: string; name: string; tipo: string
   atributo: keyof Atributos | null
@@ -598,11 +598,22 @@ function AbilityCard({
   locked?: boolean
   buildAppearances: (count: number) => DiceAppearance[]
   onSpendResource: (resourceSlug: string, newCurrent: number) => void
+  /** Ajuste fixo na quantidade de dados base (ex: -2 pra ataque com a mão auxiliar) —
+   * somado ANTES do Esforço, então cada nível de Esforço continua sempre +1 dado. */
+  diceModifier?: number
+  /** Chamado toda vez que uma rolagem acontece (qualquer nível) — diferente de
+   * `onEffortUsed`, que só as ações de mão passam. Usado pra fechar o card aberto
+   * na barra de ação depois de rolar. */
+  onRoll?: () => void
 }) {
   const [activeLevel, setActiveLevel] = useState<number | null>(null)
   const { showDiceRoll } = useDiceStageContext()
 
-  const baseDice = atributo ? Math.max(1, Math.round(atributos[atributo])) : 1
+  const baseDice = Math.max(1, (atributo ? Math.round(atributos[atributo]) : 1) + diceModifier)
+  // Habilidade cujo Cálculo lê dano/bloqueio da arma equipada (fonte "Dano/Bloqueio
+  // da arma" no editor de Ataque simples) não faz sentido desarmado — sem `itemRef`
+  // o cálculo sempre resolveria pra 0, então trava o card em vez de deixar rolar.
+  const weaponMissing = !itemRef && abilityRequiresWeapon(ability)
 
   const weaponContext: RollContext = {
     hits: 0,
@@ -647,6 +658,7 @@ function AbilityCard({
     }
 
     onEffortUsed?.(level)
+    onRoll?.()
   }
 
   return (
@@ -662,6 +674,12 @@ function AbilityCard({
       <div style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.54rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)' }}>
         Teste de {atributo ? ATTR_TEST_LABELS[atributo] ?? atributo : 'atributo'}
         {rangeDisplay !== null && <><br />Alcance: {rangeDisplay}</>}
+        {diceModifier !== 0 && (
+          <>
+            <br />
+            <span style={{ color: 'var(--error)' }}>{diceModifier > 0 ? '+' : ''}{diceModifier} dado{Math.abs(diceModifier) !== 1 ? 's' : ''} (mão auxiliar)</span>
+          </>
+        )}
       </div>
 
       <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.74rem', color: 'rgba(var(--text-rgb),0.55)', lineHeight: 1.55 }}>
@@ -671,6 +689,10 @@ function AbilityCard({
       {locked ? (
         <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', padding: '0.4rem 0.6rem', textAlign: 'center', border: '1px dashed rgba(var(--gold-rgb),0.2)', borderRadius: 6 }}>
           Já atacou nesse turno
+        </p>
+      ) : weaponMissing ? (
+        <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', padding: '0.4rem 0.6rem', textAlign: 'center', border: '1px dashed rgba(var(--gold-rgb),0.2)', borderRadius: 6 }}>
+          Requer arma equipada
         </p>
       ) : resourceEntry ? (
         <div>
@@ -785,6 +807,13 @@ export default function CharacterSheetCard({ character }: { character: Character
 
   const [sustento, setSustento] = useState(character.sustento)
   useEffect(() => setSustento(character.sustento), [character.sustento])
+
+  // Barra de ação: prévia local da barra que vai ser usada nas arenas — mostra os
+  // ÍCONES das habilidades usáveis fixos na parte inferior da tela (sem fundo, no
+  // mesmo nível do antigo botão de teste de dados); clicar num ícone abre o card
+  // cheio (mesmo `AbilityCard` do painel "Ações") centralizado por cima de tudo.
+  const [showActionBar, setShowActionBar] = useState(false)
+  const [openActionCardKey, setOpenActionCardKey] = useState<string | null>(null)
 
   function handleResourceToggle(slug: string, next: number) {
     setResources(prev => prev.map(r => (r.resource.slug === slug ? { ...r, current: next } : r)))
@@ -914,10 +943,114 @@ export default function CharacterSheetCard({ character }: { character: Character
   const otherAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && !a.is_passive)
   const passiveAbilities = characterAbilities.filter(a => a.id !== unarmedAbility.id && a.is_passive)
 
+  /**
+   * Cards de habilidade usáveis agora — mesma lista e mesmo `AbilityCard` (`node`)
+   * tanto pro painel "Ações" (mostra o card inteiro) quanto pra barra de ação (só
+   * mostra `icon`/`name`, o `node` só aparece quando o ícone é clicado). Reaproveitar
+   * o card cheio em vez de duplicar é o que garante descrição completa e níveis de
+   * Esforço funcionando nos dois lugares, sem duplicar a lógica de rolagem.
+   */
+  function buildActionCards(): { key: string; icon: string; name: string; disabled: boolean; disabledReason: string | null; node: ReactElement<{ onRoll?: () => void }> }[] {
+    return [
+      ...handActions.map(action => {
+        const isAttack = action.tipo === 'Ataque'
+        const alreadyAttacked = action.hand === 'both'
+          ? mainHandAttacked || offHandAttacked
+          : action.hand === 'main' ? mainHandAttacked : offHandAttacked
+        const weaponMissing = !action.itemRef && abilityRequiresWeapon(action.ability)
+        const resourceEntry = findResourceEntry(resources, action.ability.resource?.slug)
+        const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(action.ability.custo, isAttack ? minAttackLevel : 1) : false
+
+        const disabledReason =
+          isAttack && alreadyAttacked ? 'Já atacou nesse turno'
+          : weaponMissing ? 'Requer arma equipada'
+          : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+
+        return {
+          key: action.key,
+          icon: action.icon,
+          name: action.name,
+          disabled: disabledReason !== null,
+          disabledReason,
+          node: (
+            <AbilityCard
+              key={action.key}
+              icon={action.icon}
+              name={action.name}
+              tipo={action.tipo}
+              atributo={action.ability.atributo}
+              atributos={atributos}
+              resources={resources}
+              resourceEntry={findResourceEntry(resources, action.ability.resource?.slug)}
+              description={action.ability.description}
+              custo={action.ability.custo}
+              ability={action.ability}
+              itemRef={action.itemRef}
+              characterName={character.name}
+              minEffortLevel={isAttack ? minAttackLevel : 1}
+              onEffortUsed={isAttack ? (level: number) => registerHandAttack(action.hand, level) : undefined}
+              locked={isAttack && alreadyAttacked}
+              diceModifier={isAttack && action.hand === 'off' ? -2 : 0}
+              buildAppearances={myAppearances}
+              onSpendResource={handleResourceToggle}
+            />
+          ),
+        }
+      }),
+      ...otherAbilities.map(ability => {
+        const weaponMissing = !(mainHandItem ?? offHandItem) && abilityRequiresWeapon(ability)
+        const resourceEntry = findResourceEntry(resources, ability.resource?.slug)
+        const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(ability.custo, 1) : false
+        const disabledReason = weaponMissing ? 'Requer arma equipada' : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+
+        return {
+          key: `other-${ability.id}`,
+          icon: ability.icon || '✨',
+          name: ability.name,
+          disabled: disabledReason !== null,
+          disabledReason,
+          node: (
+            <AbilityCard
+              key={ability.id}
+              icon={ability.icon || '✨'}
+              name={ability.name}
+              tipo="Habilidade"
+              atributo={ability.atributo}
+              atributos={atributos}
+              resources={resources}
+              resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
+              description={ability.description}
+              custo={ability.custo}
+              ability={ability}
+              itemRef={mainHandItem ?? offHandItem}
+              characterName={character.name}
+              buildAppearances={myAppearances}
+              onSpendResource={handleResourceToggle}
+            />
+          ),
+        }
+      }),
+    ]
+  }
+
+  const actionCards = buildActionCards()
+  const openActionCard = actionCards.find(c => c.key === openActionCardKey) ?? null
+
   return (
     <div className="flex flex-col gap-5">
       {/* Botão de teste — dispara o início de turno (por enquanto só restaura a Estamina). */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        <label className="flex items-center gap-1.5" style={{ cursor: 'pointer', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <input
+            type="checkbox"
+            checked={showActionBar}
+            onChange={e => {
+              setShowActionBar(e.target.checked)
+              if (!e.target.checked) setOpenActionCardKey(null)
+            }}
+          />
+          Exibir barra de ação
+        </label>
         <button
           type="button"
           onClick={handleEndTurn}
@@ -1109,53 +1242,7 @@ export default function CharacterSheetCard({ character }: { character: Character
           <div className="ddb-panel p-5">
             <h2 className="ddb-section-title" style={{ marginBottom: '1rem' }}>Ações</h2>
             <div className="flex flex-wrap gap-3">
-              {handActions.map(action => {
-                const isAttack = action.tipo === 'Ataque'
-                const alreadyAttacked = action.hand === 'both'
-                  ? mainHandAttacked || offHandAttacked
-                  : action.hand === 'main' ? mainHandAttacked : offHandAttacked
-
-                return (
-                  <AbilityCard
-                    key={action.key}
-                    icon={action.icon}
-                    name={action.name}
-                    tipo={action.tipo}
-                    atributo={action.ability.atributo}
-                    atributos={atributos}
-                    resources={resources}
-                    resourceEntry={findResourceEntry(resources, action.ability.resource?.slug)}
-                    description={action.ability.description}
-                    custo={action.ability.custo}
-                    ability={action.ability}
-                    itemRef={action.itemRef}
-                    characterName={character.name}
-                    minEffortLevel={isAttack ? minAttackLevel : 1}
-                    onEffortUsed={isAttack ? (level: number) => registerHandAttack(action.hand, level) : undefined}
-                    locked={isAttack && alreadyAttacked}
-                    buildAppearances={myAppearances}
-                    onSpendResource={handleResourceToggle}
-                  />
-                )
-              })}
-              {otherAbilities.map(ability => (
-                <AbilityCard
-                  key={ability.id}
-                  icon={ability.icon || '✨'}
-                  name={ability.name}
-                  tipo="Habilidade"
-                  atributo={ability.atributo}
-                  atributos={atributos}
-                  resources={resources}
-                  resourceEntry={findResourceEntry(resources, ability.resource?.slug)}
-                  description={ability.description}
-                  custo={ability.custo}
-                  ability={ability}
-                  characterName={character.name}
-                  buildAppearances={myAppearances}
-                  onSpendResource={handleResourceToggle}
-                />
-              ))}
+              {actionCards.map(c => c.node)}
             </div>
 
             {passiveAbilities.length > 0 && (
@@ -1225,6 +1312,60 @@ export default function CharacterSheetCard({ character }: { character: Character
 
 
       </div>
+
+      {/* Barra de ação — prévia local (a versão de verdade vai morar na arena). Fixa
+          embaixo, acima de tudo, no mesmo nível do antigo botão de teste de dados, sem
+          fundo — só os ícones centralizados. Clicar num ícone abre o `AbilityCard`
+          cheio (mesmo do painel "Ações", com descrição e Esforço) centralizado na tela. */}
+      {showActionBar && (
+        <div
+          style={{
+            position: 'fixed', left: 0, right: 0, bottom: 16, zIndex: 10003,
+            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem', padding: '0 1rem',
+            pointerEvents: 'none',
+          }}
+        >
+          {actionCards.map(c => (
+            <HoverTip key={c.key} title={c.disabledReason ? `${c.name} — ${c.disabledReason}` : c.name}>
+              <button
+                type="button"
+                onClick={() => setOpenActionCardKey(c.key)}
+                disabled={c.disabled}
+                className="action-bar-icon-btn"
+                style={{
+                  pointerEvents: 'auto',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 46, height: 46, borderRadius: '50%', fontSize: '1.3rem', cursor: c.disabled ? 'not-allowed' : 'pointer',
+                  border: '1px solid rgba(var(--gold-rgb),0.35)', background: 'rgba(var(--bg-rgb),0.85)',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
+                  filter: c.disabled ? 'grayscale(1)' : 'none',
+                  opacity: c.disabled ? 0.4 : 1,
+                }}
+              >
+                {c.icon}
+              </button>
+            </HoverTip>
+          ))}
+        </div>
+      )}
+
+      {/* Card aberto a partir da barra de ação — perto da base, logo acima dos ícones.
+          `onRoll` fecha o card assim que a habilidade é rolada (clone só pra esse
+          card do modal, o mesmo `node` do painel "Ações" não ganha esse fechamento). */}
+      {openActionCard && (
+        <div
+          onClick={() => setOpenActionCardKey(null)}
+          className="action-card-modal-backdrop"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10002, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)', paddingBottom: 96,
+          }}
+        >
+          <div className="action-card-pop-in" onClick={e => e.stopPropagation()}>
+            {cloneElement(openActionCard.node, { onRoll: () => setOpenActionCardKey(null) })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

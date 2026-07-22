@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import Dice3D, { type Dice3DHandle } from '@/components/Dice3D'
 import type { DiceAppearance, DiceColorset } from '@/app/lib/dice/diceEngine'
-import { defaultAppearances, DICE_RESULT_DELAY, DiceResultModal } from '@/app/painel/jogo/shared'
+import { DICE_RESULT_DELAY, DiceResultModal } from '@/app/painel/jogo/shared'
 
 type DiceResultState = { rolls: number[]; title?: string; resultText?: string }
 
@@ -95,25 +95,6 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
       {children}
       <Dice3D ref={diceBoxRef} portal width={diceStageSize.width} height={diceStageSize.height} />
       {diceResult && <DiceResultModal rolls={diceResult.rolls} title={diceResult.title} resultText={diceResult.resultText} onClose={closeDiceResult} />}
-
-      {/* Botão de teste temporário — rola dados no branco padrão (mesmo fallback usado
-          quando alguém não tem skin nenhuma na coleção), sem precisar passar pelo
-          fluxo de ataque. */}
-      <button
-        type="button"
-        onClick={() => {
-          const rolls = [1, 2, 3].map(() => 1 + Math.floor(Math.random() * 6))
-          showDiceRoll(rolls, 'Teste', undefined, defaultAppearances(rolls.length))
-        }}
-        style={{
-          position: 'fixed', bottom: 16, right: 16, zIndex: 10001,
-          fontFamily: 'var(--font-cinzel)', fontSize: '0.7rem', padding: '0.6rem 1rem', borderRadius: 8,
-          background: 'rgba(184,146,74,0.9)', color: '#1a1a1a', border: 'none', cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-        }}
-      >
-        🎲 Testar dados
-      </button>
     </DiceStageContext.Provider>
   )
 }
