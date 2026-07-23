@@ -3,15 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   effortCost, fetchMyDiceSkins, updateCharacterResource,
-  type Character, type CharacterResourceEntry, type OwnedDiceSkin,
+  type Ability, type Character, type CharacterResourceEntry, type OwnedDiceSkin,
 } from '@/app/lib/gameData'
 import { useAuth } from '@/app/lib/auth-context'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
 import { BattleLog, DICE_APPEARANCE_DEFAULT, defaultAppearances, SUCCESS_THRESHOLD } from './shared'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
-import { resolveAbilityEffects, type ResolvedEffect, type RollContext } from '@/app/lib/abilityResolver'
+import { computeRangeDisplay, resolveAbilityEffects, type ResolvedEffect, type RollContext } from '@/app/lib/abilityResolver'
 import {
-  AbilityCard, FALLBACK_UNARMED_ABILITY, findResourceEntry, resolveHandActions, resourceValue, type ResolvedHandAction,
+  AbilityCard, FALLBACK_UNARMED_ABILITY, findResourceEntry, resolveHandActions, resourceValue,
+  type CharacterSheetItem, type ResolvedHandAction,
 } from '@/components/CharacterSheetCard'
 import ActionBar, { type ActionCardSpec } from '@/components/ActionBar'
 import PartyStatusBar, { type PartyMemberStatus } from '@/components/PartyStatusBar'
@@ -39,18 +40,24 @@ type ArenaToken = {
 type Cell = { col: number; row: number }
 type ReachableInfo = { dist: number; parent: string | null }
 
-const COLS = 20
-const ROWS = 14
+const COLS = 32
+const ROWS = 20
 const CELL = 40
+const SPAWN_ROW = Math.floor(ROWS / 2)
 const MOVE_DIRECTIONS: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 const BANNER_DURATION = 1400
 
 const WALL_DENSITY = 0.1
-const FLOOR_SHADES = ['#1c1d21', '#1f2024', '#191a1e', '#212226', '#1a1b1f']
+/** Terreno externo: mistura de tons de grama e terra (era um piso de masmorra escura
+ * antes) — sorteado por célula em `generateRandomFloors`, sem clusterizar por tipo. */
+const FLOOR_SHADES = [
+  '#3a5f2e', '#436b34', '#345c29', '#4a7239', '#3d6130', '#2f4f26',
+  '#6b4a2f', '#5c3f28', '#7a5636', '#4f3620',
+]
 /** Zonas livres de paredes nos spawns, pra garantir espaço pra os dois lados aparecerem. */
 const SAFE_ZONES: Array<{ minCol: number; maxCol: number; minRow: number; maxRow: number }> = [
-  { minCol: 0, maxCol: 6, minRow: 5, maxRow: 9 },
-  { minCol: COLS - 7, maxCol: COLS - 1, minRow: 5, maxRow: 9 },
+  { minCol: 0, maxCol: 6, minRow: SPAWN_ROW - 2, maxRow: SPAWN_ROW + 2 },
+  { minCol: COLS - 7, maxCol: COLS - 1, minRow: SPAWN_ROW - 2, maxRow: SPAWN_ROW + 2 },
 ]
 
 function isInSafeZone(col: number, row: number) {
@@ -94,7 +101,7 @@ function generateRandomWalls(): Set<string> {
       if (isInSafeZone(col, row)) continue
       walls.add(`${col},${row}`)
     }
-    if (cellsConnected(walls, { col: 4, row: 7 }, { col: COLS - 5, row: 7 })) {
+    if (cellsConnected(walls, { col: 4, row: SPAWN_ROW }, { col: COLS - 5, row: SPAWN_ROW })) {
       return walls
     }
   }
@@ -112,7 +119,6 @@ function generateRandomFloors(): string[][] {
 const HIT_EFFECT_DURATION = 500
 const DEFAULT_ZOOM = 1.5
 const DRAG_THRESHOLD = 4
-const VIEWPORT_HEIGHT = 'min(78vh, 760px)'
 
 function randomBetween(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1))
@@ -121,6 +127,17 @@ function randomBetween(min: number, max: number) {
 /** 1d6 por dado — sucesso em 5 ou 6, mesma regra de /como-jogar e do ArenaRules do backend. */
 function rollDice(count: number): number[] {
   return Array.from({ length: Math.max(0, count) }, () => 1 + Math.floor(Math.random() * 6))
+}
+
+/**
+ * Vida/Estamina/Alma sempre começam no máximo quando a Arena abre — é uma luta de
+ * treino nova, não a continuação do dano de uma sessão anterior (o resto da Arena
+ * PERSISTE dano de verdade — ver `applyDamageToCoracao` — então sem isso o jogador
+ * abriria a arena e apanharia com a vida ainda baixa de uma luta passada). Fome e
+ * Deslocamento ficam de fora — não são "gastos em combate" do mesmo jeito.
+ */
+function topUpCombatResources(list: CharacterResourceEntry[]): CharacterResourceEntry[] {
+  return list.map(r => (['coracao', 'estamina', 'alma'].includes(r.resource.slug) ? { ...r, current: r.base } : r))
 }
 
 /**
@@ -269,7 +286,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
       label: character.name.charAt(0).toUpperCase(),
       color: '#b8924a',
       col: 4,
-      row: 7,
+      row: SPAWN_ROW,
       movement: 5,
       movementUsed: 0,
       casca: character.casca,
@@ -284,8 +301,8 @@ export default function Arena({ character, onExit }: { character: Character; onE
       id: 'shadow',
       label: character.name.charAt(0).toUpperCase(),
       color: '#241f2a',
-      col: 15,
-      row: 7,
+      col: COLS - 5,
+      row: SPAWN_ROW,
       movement: 5,
       movementUsed: 0,
       casca: character.casca,
@@ -296,6 +313,14 @@ export default function Arena({ character, onExit }: { character: Character; onE
     },
   ])
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null)
+  /** Chave do `ActionCardSpec` aberto agora na `ActionBar` (ou `null`). */
+  const [activeAbilityKey, setActiveAbilityKey] = useState<string | null>(null)
+  /** Nível de Esforço ARMADO (escolhido, aguardando confirmação) do card aberto —
+   * é isso que liga o alcance vermelho no mapa (só depois do Esforço escolhido,
+   * não assim que o card abre) e o que o clique no mapa confirma/cancela. */
+  const [armedLevel, setArmedLevel] = useState<number | null>(null)
+  const [confirmToken, setConfirmToken] = useState(0)
+  const [cancelToken, setCancelToken] = useState(0)
   const [hoverCell, setHoverCell] = useState<Cell | null>(null)
   const [turn, setTurn] = useState(1)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -328,8 +353,22 @@ export default function Arena({ character, onExit }: { character: Character; onE
   // Recursos do jogador (mesmo padrão da ficha — espelha `character.resources`,
   // persiste via API) e da sombra (cópia LOCAL própria, sem persistir — ela não é um
   // personagem de verdade no banco, só empresta os dados do jogador pra essa luta).
-  const [resources, setResources] = useState<CharacterResourceEntry[]>(character.resources)
-  const [shadowResources, setShadowResources] = useState<CharacterResourceEntry[]>(character.resources)
+  // Os dois já entram com Vida/Estamina/Alma no máximo (ver `topUpCombatResources`).
+  const [resources, setResources] = useState<CharacterResourceEntry[]>(() => topUpCombatResources(character.resources))
+  const [shadowResources, setShadowResources] = useState<CharacterResourceEntry[]>(() => topUpCombatResources(character.resources))
+
+  // Persiste o "top up" de verdade pro jogador (a sombra é só local, não precisa) —
+  // só quando algum valor realmente estava abaixo do máximo, pra não fazer chamadas
+  // à toa toda vez que a Arena abre com o personagem já cheio.
+  useEffect(() => {
+    for (const slug of ['coracao', 'estamina', 'alma']) {
+      const original = findResourceEntry(character.resources, slug)
+      if (original && original.current !== original.base) {
+        updateCharacterResource(character.id, slug, original.base, token).catch(err => console.error('Falha ao atualizar recurso', err))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só uma vez, no mount
+  }, [])
 
   function handleResourceToggle(slug: string, next: number) {
     setResources(prev => prev.map(r => (r.resource.slug === slug ? { ...r, current: next } : r)))
@@ -429,6 +468,17 @@ export default function Arena({ character, onExit }: { character: Character; onE
     tokensRef.current = tokens
   }, [tokens])
 
+  // A Arena é `position: fixed` cobrindo a tela inteira (descolada do painel) — trava
+  // o scroll do body enquanto ela estiver montada, senão dava pra rolar o painel por
+  // baixo. Restaura ao sair (onExit desmonta este componente).
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [])
+
   // Garante que os listeners de arrastar (window) não fiquem pendurados se o componente desmontar.
   useEffect(() => {
     return () => {
@@ -525,52 +575,138 @@ export default function Arena({ character, onExit }: { character: Character; onE
     return getPath(reachable, `${selectedToken.col},${selectedToken.row}`, key)
   }, [selectedToken, reachable, hoverCell])
 
-  /** Ataque exige corpo a corpo por enquanto (sem alcance à distância tipo Arremesso nessa
-   * passada) — mesma exigência de adjacência que o resto da Arena já usa (IA da sombra, etc). */
-  const isPlayerAdjacentToShadow = footprintDistanceToCell(tokenCells(player), { col: shadow.col, row: shadow.row }) === 1
+  /** Alcance de uma habilidade: o do item equipado (arma com alcance próprio, ex:
+   * arco), senão o `range_calculation` dela (ex: Arremesso = Poder ÷ peso do item),
+   * senão 1 — corpo a corpo é o padrão pra toda habilidade que não diz o contrário. */
+  function resolveAbilityRange(ability: Ability, itemRef: CharacterSheetItem | null): number {
+    if (itemRef?.max_range != null) return itemRef.max_range
+    const ctx: RollContext = {
+      hits: 0,
+      weapon_base_damage: itemRef?.base_damage ?? null,
+      weapon_block_value: itemRef?.block_value ?? null,
+      weapon_weight: itemRef ? Number(itemRef.weight) : null,
+    }
+    return computeRangeDisplay(ability, character, ctx) ?? 1
+  }
 
-  /** Só existe ação real quando o jogador está selecionado E adjacente à sombra —
-   * mesmo card cheio (`AbilityCard`) e mesmo motor (`resolveAbilityEffects`) que a
-   * ficha usa, com `onResolved` aplicando o dano de verdade na sombra. */
-  const actionCards: ActionCardSpec[] = (!battleOver && selectedTokenId === 'player' && isPlayerAdjacentToShadow)
-    ? handActions.map(action => {
-        const resourceEntry = findResourceEntry(resources, action.ability.resource?.slug)
-        const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(action.ability.custo, 1) : false
-        const disabledReason = player.attacked
-          ? 'Já atacou nesse turno'
-          : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+  const distanceToShadow = footprintDistanceToCell(tokenCells(player), { col: shadow.col, row: shadow.row })
 
-        return {
-          key: action.key,
-          icon: action.icon,
-          name: action.name,
-          disabled: disabledReason !== null,
-          disabledReason,
-          node: (
-            <AbilityCard
-              key={action.key}
-              icon={action.icon}
-              name={action.name}
-              tipo={action.tipo}
-              atributo={action.ability.atributo}
-              atributos={character}
-              resources={resources}
-              resourceEntry={resourceEntry}
-              description={action.ability.description}
-              custo={action.ability.custo}
-              ability={action.ability}
-              itemRef={action.itemRef}
-              characterName={character.name}
-              locked={player.attacked}
-              buildAppearances={myAppearances}
-              onSpendResource={handleResourceToggle}
-              onEffortUsed={() => setTokens(prev => prev.map(t => (t.id === 'player' ? { ...t, attacked: true } : t)))}
-              onResolved={effects => applyDamageToShadow(player.label, action.ability.name, effects)}
-            />
-          ),
-        }
-      })
+  /** O jogador só precisa estar selecionado — cada habilidade decide sozinha se a
+   * sombra está a alcance (1 pra corpo a corpo, o alcance calculado pra Arremesso
+   * etc.), então uma fora de alcance fica desabilitada, não escondida. Mesmo card
+   * cheio (`AbilityCard`) e mesmo motor (`resolveAbilityEffects`) que a ficha usa,
+   * com `onResolved` aplicando o dano de verdade na sombra. */
+  const otherAbilities = character.abilities.filter(a => a.id !== unarmedAbility.id && !a.is_passive)
+
+  const actionCards: ActionCardSpec[] = (!battleOver && selectedTokenId === 'player')
+    ? [
+        ...handActions.map(action => {
+          const resourceEntry = findResourceEntry(resources, action.ability.resource?.slug)
+          const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(action.ability.custo, 1) : false
+          const range = resolveAbilityRange(action.ability, action.itemRef)
+          const outOfRange = distanceToShadow > range
+          const disabledReason = player.attacked
+            ? 'Já atacou nesse turno'
+            : outOfRange ? 'Fora de alcance'
+            : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+
+          return {
+            key: action.key,
+            icon: action.icon,
+            name: action.name,
+            disabled: disabledReason !== null,
+            disabledReason,
+            range,
+            node: (
+              <AbilityCard
+                key={action.key}
+                icon={action.icon}
+                name={action.name}
+                tipo={action.tipo}
+                atributo={action.ability.atributo}
+                atributos={character}
+                resources={resources}
+                resourceEntry={resourceEntry}
+                description={action.ability.description}
+                custo={action.ability.custo}
+                ability={action.ability}
+                itemRef={action.itemRef}
+                characterName={character.name}
+                locked={player.attacked}
+                buildAppearances={myAppearances}
+                onSpendResource={handleResourceToggle}
+                onEffortUsed={() => setTokens(prev => prev.map(t => (t.id === 'player' ? { ...t, attacked: true } : t)))}
+                onResolved={effects => applyDamageToShadow(player.label, action.ability.name, effects)}
+              />
+            ),
+          }
+        }),
+        // Habilidades do personagem não ligadas a uma mão (trilha, concedidas via
+        // admin/teste etc.) — mesma trava de "já atacou" das mãos, já que aqui na
+        // Arena toda ação com alvo conta como o ataque do turno (sem Esforço próprio
+        // por habilidade ainda, ver `onEffortUsed`/`locked` de `AbilityCard`).
+        ...otherAbilities.map(ability => {
+          const resourceEntry = findResourceEntry(resources, ability.resource?.slug)
+          const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(ability.custo, 1) : false
+          const range = resolveAbilityRange(ability, mainHandItem ?? offHandItem)
+          const outOfRange = distanceToShadow > range
+          const disabledReason = player.attacked
+            ? 'Já atacou nesse turno'
+            : outOfRange ? 'Fora de alcance'
+            : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+
+          return {
+            key: `other-${ability.id}`,
+            icon: ability.icon || '✨',
+            name: ability.name,
+            disabled: disabledReason !== null,
+            disabledReason,
+            range,
+            node: (
+              <AbilityCard
+                key={`other-${ability.id}`}
+                icon={ability.icon || '✨'}
+                name={ability.name}
+                tipo="Habilidade"
+                atributo={ability.atributo}
+                atributos={character}
+                resources={resources}
+                resourceEntry={resourceEntry}
+                description={ability.description}
+                custo={ability.custo}
+                ability={ability}
+                itemRef={mainHandItem ?? offHandItem}
+                characterName={character.name}
+                locked={player.attacked}
+                buildAppearances={myAppearances}
+                onSpendResource={handleResourceToggle}
+                onEffortUsed={() => setTokens(prev => prev.map(t => (t.id === 'player' ? { ...t, attacked: true } : t)))}
+                onResolved={effects => applyDamageToShadow(player.label, ability.name, effects)}
+              />
+            ),
+          }
+        }),
+      ]
     : []
+
+  const activeAbilityRange = activeAbilityKey != null ? actionCards.find(c => c.key === activeAbilityKey)?.range ?? null : null
+
+  /** Todas as células a `range` de distância (Chebyshev) do jogador — só depois que
+   * o Esforço é escolhido (`armedLevel`), não assim que o card abre. Pintadas de
+   * vermelho no mapa pra mostrar onde a habilidade pode acertar (não é sobre mover,
+   * então ignora paredes/BFS); um clique nelas confirma o ataque, fora cancela. */
+  const attackRangeCells = useMemo(() => {
+    if (activeAbilityRange === null || armedLevel === null) return null
+    const cells: Cell[] = []
+    const origin = footprintCells(player.col, player.row, !!player.large)
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const dist = footprintDistanceToCell(origin, { col: c, row: r })
+        if (dist > 0 && dist <= activeAbilityRange) cells.push({ col: c, row: r })
+      }
+    }
+    return cells
+  }, [activeAbilityRange, armedLevel, player.col, player.row, player.large])
 
   function drawToken(ctx: CanvasRenderingContext2D, token: ArenaToken, col: number, row: number, isSelected: boolean) {
     const wide = !!token.large
@@ -682,7 +818,10 @@ export default function Arena({ character, onExit }: { character: Character; onE
       ctx.stroke()
     })
 
-    if (reachable) {
+    // Alcance de movimento (azul) só faz sentido fora de uma habilidade armada —
+    // não dá pra mover e atacar ao mesmo tempo, então some assim que o Esforço é
+    // escolhido (mesmo o `reachable` continuando calculado por baixo).
+    if (reachable && armedLevel === null) {
       ctx.fillStyle = 'rgba(106, 130, 184, 0.35)'
       ctx.strokeStyle = 'rgba(106, 130, 184, 0.7)'
       reachable.forEach((info, key) => {
@@ -693,7 +832,17 @@ export default function Arena({ character, onExit }: { character: Character; onE
       })
     }
 
-    if (previewPath && previewPath.length > 1) {
+    // Alcance da habilidade aberta na barra de ação — vermelho, por cima de tudo.
+    if (attackRangeCells) {
+      ctx.fillStyle = 'rgba(163, 74, 74, 0.32)'
+      ctx.strokeStyle = 'rgba(163, 74, 74, 0.75)'
+      attackRangeCells.forEach(cell => {
+        ctx.fillRect(cell.col * CELL, cell.row * CELL, CELL, CELL)
+        ctx.strokeRect(cell.col * CELL + 0.5, cell.row * CELL + 0.5, CELL - 1, CELL - 1)
+      })
+    }
+
+    if (previewPath && previewPath.length > 1 && armedLevel === null) {
       ctx.strokeStyle = 'rgba(240, 209, 138, 0.9)'
       ctx.lineWidth = 3
       ctx.setLineDash([6, 5])
@@ -724,7 +873,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
     const ctx = canvas.getContext('2d')
     if (ctx) draw(ctx)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- draw closes over these same deps, re-declared each render
-  }, [tokens, reachable, selectedTokenId, previewPath, imagesVersion])
+  }, [tokens, reachable, selectedTokenId, attackRangeCells, armedLevel, previewPath, imagesVersion])
 
   function tweenStep(from: Cell, to: Cell, duration: number, onFrame: (col: number, row: number) => void, onDone: () => void) {
     const start = performance.now()
@@ -783,6 +932,16 @@ export default function Arena({ character, onExit }: { character: Character; onE
     const col = Math.floor(((e.clientX - rect.left) / rect.width) * COLS)
     const row = Math.floor(((e.clientY - rect.top) / rect.height) * ROWS)
     if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return
+
+    // Habilidade armada (Esforço já escolhido, esperando confirmação) — clique num
+    // quadrado vermelho (`attackRangeCells`) confirma e rola de verdade; fora deles,
+    // cancela. Nenhuma outra interação do mapa (mover, selecionar) roda enquanto isso.
+    if (armedLevel !== null) {
+      const inRange = attackRangeCells?.some(cell => cell.col === col && cell.row === row) ?? false
+      if (inRange) setConfirmToken(t => t + 1)
+      else setCancelToken(t => t + 1)
+      return
+    }
 
     if (selectedToken && reachable) {
       const key = `${col},${row}`
@@ -906,6 +1065,14 @@ export default function Arena({ character, onExit }: { character: Character; onE
     function finish(finalPos: Cell) {
       const isAdjacent = currentPlayer ? footprintDistanceToCell(tokenCells(currentPlayer), finalPos) === 1 : false
 
+      // Estamina recupera pro máximo a cada troca de turno — a sombra antes de agir
+      // (pra IA sempre atacar com o tanque cheio), o jogador aqui embaixo junto do
+      // reset de movimento/ataque (mesma regra do botão de teste "Virar Turno" da ficha).
+      const shadowEstaminaEntry = findResourceEntry(shadowResources, 'estamina')
+      if (shadowEstaminaEntry && shadowEstaminaEntry.current !== shadowEstaminaEntry.base) {
+        setShadowResources(prev => prev.map(r => (r.resource.slug === 'estamina' ? { ...r, current: r.base } : r)))
+      }
+
       // Calculado uma vez fora do closure de setTokens (não depende de qual token o
       // .map() está visitando) — evita o TS perder a narrowing de um `let` reatribuído
       // dentro de uma closure passada pro setState.
@@ -917,6 +1084,11 @@ export default function Arena({ character, onExit }: { character: Character; onE
             return { rolls: computed.rolls, abilityName: computed.abilityName, hit: rawDamage > 0, rawDamage }
           })()
         : null
+
+      const playerEstaminaEntry = findResourceEntry(resources, 'estamina')
+      if (playerEstaminaEntry && playerEstaminaEntry.current !== playerEstaminaEntry.base) {
+        handleResourceToggle('estamina', playerEstaminaEntry.base)
+      }
 
       // Só posição/reset de turno aqui — o dano de verdade vai pro recurso Coração
       // via `applyDamageToCoracao` (que já mexe em `tokens`/`resources` sozinho).
@@ -930,28 +1102,37 @@ export default function Arena({ character, onExit }: { character: Character; onE
 
       let shadowAttackMessage: string | null = null
       let shadowLogMessage: string | null = null
-      let appliedDamage = 0
+      // Só uma PRÉVIA (pra texto/log) — a aplicação de verdade (`applyDamageToCoracao`,
+      // que muta tokens/resources e persiste na API) só acontece no `onComplete` do
+      // `showDiceRoll` abaixo, depois que o jogador já viu o resultado da rolagem.
+      const previewDamage = attack?.hit ? applyCascaAbsorption(attack.rawDamage, currentPlayer!.casca).damage : 0
 
       if (attack?.hit) {
-        appliedDamage = applyDamageToCoracao('player', attack.rawDamage)
-        shadowAttackMessage = `A sombra atacou! Você perde ${appliedDamage} de vida`
-        shadowLogMessage = `${currentShadow!.label} usa ${attack.abilityName} — ${appliedDamage} de dano em você.`
+        shadowAttackMessage = `A sombra atacou! Você perde ${previewDamage} de vida`
+        shadowLogMessage = `${currentShadow!.label} usa ${attack.abilityName} — ${previewDamage} de dano em você.`
       } else if (attack) {
         shadowAttackMessage = 'A sombra atacou e errou!'
         shadowLogMessage = `${currentShadow!.label} usa ${attack.abilityName} e erra`
       }
 
       setTurn(t => t + 1)
-      if (attack) {
-        const resultText = attack.hit ? `Você sofreu ${appliedDamage} de dano.` : 'A sombra errou o ataque.'
-        diceStage.showDiceRoll(attack.rolls, `${currentShadow?.label ?? 'Sombra'} usa ${attack.abilityName}`, resultText, defaultAppearances(attack.rolls.length))
-        if (attack.hit && currentPlayer) triggerHitEffect(currentPlayer.id)
-      }
-      if (shadowLogMessage) logEvent(shadowLogMessage)
       logEvent(`Turno ${turn + 1} — vez de ${character.name}.`)
-      if (shadowAttackMessage) {
-        showBanner(shadowAttackMessage, 1900)
-        setTimeout(() => showBanner(`Turno de ${character.name}`), 2000)
+
+      if (attack) {
+        const resultText = attack.hit ? `Você sofreu ${previewDamage} de dano.` : 'A sombra errou o ataque.'
+        // Log/banner que revelam o dano só disparam aqui dentro — depois que o
+        // jogador já viu o resultado da rolagem, junto da aplicação de verdade.
+        diceStage.showDiceRoll(attack.rolls, `${currentShadow?.label ?? 'Sombra'} usa ${attack.abilityName}`, resultText, defaultAppearances(attack.rolls.length), () => {
+          if (attack.hit && currentPlayer) {
+            applyDamageToCoracao('player', attack.rawDamage)
+            triggerHitEffect(currentPlayer.id)
+          }
+          if (shadowLogMessage) logEvent(shadowLogMessage)
+          if (shadowAttackMessage) {
+            showBanner(shadowAttackMessage, 1900)
+            setTimeout(() => showBanner(`Turno de ${character.name}`), 2000)
+          }
+        })
       } else {
         showBanner(`Turno de ${character.name}`)
       }
@@ -1006,89 +1187,77 @@ export default function Arena({ character, onExit }: { character: Character; onE
   ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="gold-glow" style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(1.4rem, 3vw, 1.9rem)', fontWeight: 900, color: 'var(--text)' }}>
-            Lute contra você mesmo — {character.name}
-          </h1>
-          <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Clique no seu personagem para mover; fique adjacente à sombra pra ver suas ações de ataque. Arraste o mapa pra navegar e use a roda do mouse pra dar zoom.
-          </p>
-        </div>
-        <button type="button" className="hk-btn hk-btn-soul px-4 py-1.5 rounded text-xs shrink-0" onClick={onExit}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'var(--bg)', overflow: 'hidden' }}>
+      {/* Mapa — preenche a tela inteira, atrás de tudo. Arraste pra navegar, roda do mouse pra zoom. */}
+      <div
+        ref={canvasViewportRef}
+        style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
+      >
+        <canvas
+          ref={canvasRef}
+          onClick={handleCanvasClick}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseLeave={() => setHoverCell(null)}
+          onWheel={handleCanvasWheel}
+          style={{
+            display: 'block',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            width: COLS * CELL * zoom,
+            height: ROWS * CELL * zoom,
+            userSelect: 'none',
+          }}
+        />
+      </div>
+
+      {/* HUD estilo jogo de luta — um lutador de cada lado, no topo. */}
+      <div style={{ position: 'fixed', top: 16, left: 16, right: 16, zIndex: 10004, display: 'flex', justifyContent: 'space-between' }}>
+        <PartyStatusBar members={partyMembers} variant="compact" />
+      </div>
+
+      {/* Turno + sair — pílula centralizada no topo, entre as duas barras de vida. */}
+      <div
+        className="ddb-panel p-2 flex items-center gap-3"
+        style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10004 }}
+      >
+        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+          Turno {turn}
+        </span>
+        <button type="button" className="hk-btn hk-btn-soul px-3 py-1 rounded text-xs shrink-0" onClick={onExit}>
           Voltar
         </button>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'var(--text)' }}>Turno {turn}</span>
-      </div>
-      <PartyStatusBar members={partyMembers} />
-
-      <div className="flex gap-4 flex-wrap items-start">
-        <div className="ddb-panel p-3 flex-1" style={{ minWidth: 320, position: 'relative' }}>
-          <div
-            ref={canvasViewportRef}
-            style={{ width: '100%', height: VIEWPORT_HEIGHT, overflow: 'hidden' }}
-          >
-            <canvas
-              ref={canvasRef}
-              onClick={handleCanvasClick}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseLeave={() => setHoverCell(null)}
-              onWheel={handleCanvasWheel}
-              style={{
-                display: 'block',
-                cursor: isDragging ? 'grabbing' : 'grab',
-                width: COLS * CELL * zoom,
-                height: ROWS * CELL * zoom,
-                userSelect: 'none',
-              }}
-            />
-          </div>
-
-          {turnBanner && (
-            <div
-              className="ddb-panel parchment p-3 flex items-center justify-center"
-              style={{
-                position: 'absolute',
-                top: 16,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 20,
-                minWidth: 200,
-                textAlign: 'center',
-              }}
-            >
-              <span className="gold-glow" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--text)', letterSpacing: '0.03em' }}>
-                {turnBanner}
-              </span>
-            </div>
-          )}
+      {turnBanner && (
+        <div
+          className="ddb-panel parchment p-3 flex items-center justify-center"
+          style={{ position: 'fixed', top: 76, left: '50%', transform: 'translateX(-50%)', zIndex: 10004, minWidth: 200, textAlign: 'center' }}
+        >
+          <span className="gold-glow" style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', color: 'var(--text)', letterSpacing: '0.03em' }}>
+            {turnBanner}
+          </span>
         </div>
+      )}
 
-        <BattleLog entries={battleLog} height={ROWS * CELL + 24} />
-      </div>
+      {/* Log de batalha — flutua por cima da arena, expande/colapsa, canto superior direito. */}
+      <FloatingBattleLog entries={battleLog} />
 
+      {/* Dica/estado da vez — pílula flutuante logo acima da barra de ação. */}
       <div
-        className="ddb-panel parchment p-3 flex items-center gap-3 flex-wrap"
-        style={{ position: 'sticky', bottom: 12, zIndex: 30 }}
+        className="ddb-panel parchment p-2 flex items-center gap-3 flex-wrap"
+        style={{ position: 'fixed', bottom: 78, left: '50%', transform: 'translateX(-50%)', zIndex: 10004, maxWidth: '90vw' }}
       >
         {battleOver ? (
-          <span style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: '0.85rem', color: shadowCoracao.current <= 0 ? 'var(--gold)' : 'var(--error)' }}>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: '0.8rem', color: shadowCoracao.current <= 0 ? 'var(--gold)' : 'var(--error)' }}>
             {shadowCoracao.current <= 0 ? 'Você venceu! A sombra caiu.' : 'Você foi derrotado pela sua sombra...'}
           </span>
         ) : !selectedToken ? (
-          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             Clique no seu personagem para mover ou atacar.
           </span>
         ) : selectedToken.id === 'player' ? (
-          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {isPlayerAdjacentToShadow
-              ? 'Clique numa célula destacada para mover, ou ataque pela barra de ação.'
-              : 'Clique numa célula destacada para mover — fique adjacente à sombra pra atacar.'}
+          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Clique numa célula destacada para mover, ou ataque pela barra de ação — cada habilidade tem seu próprio alcance.
           </span>
         ) : null}
       </div>
@@ -1101,7 +1270,40 @@ export default function Arena({ character, onExit }: { character: Character; onE
         actionCards={actionCards}
         onCancelSelection={selectedToken?.id === 'player' ? clearSelection : undefined}
         onEndTurn={handleEndTurn}
+        onOpenCardChange={setActiveAbilityKey}
+        armMode
+        onArmedLevelChange={setArmedLevel}
+        confirmToken={confirmToken}
+        cancelToken={cancelToken}
+        onAbilityRolled={clearSelection}
       />
+    </div>
+  )
+}
+
+/** Log de batalha flutuante — colapsado por padrão (só o botão aparece), expande
+ * por cima do mapa sem empurrar nada do layout (tudo na Arena é `position: fixed`). */
+function FloatingBattleLog({ entries }: { entries: string[] }) {
+  const [collapsed, setCollapsed] = useState(true)
+
+  return (
+    <div style={{ position: 'fixed', top: 76, right: 16, zIndex: 10004, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+      <button
+        type="button"
+        onClick={() => setCollapsed(c => !c)}
+        className="ddb-panel p-2"
+        style={{
+          fontFamily: 'var(--font-cinzel)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--gold)',
+          cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap',
+        }}
+      >
+        📜 Log {collapsed ? '▾' : '▴'}
+      </button>
+      {!collapsed && (
+        <div className="action-card-pop-in">
+          <BattleLog entries={entries} height={360} />
+        </div>
+      )}
     </div>
   )
 }

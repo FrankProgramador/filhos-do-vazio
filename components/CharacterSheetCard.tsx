@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   effortCost, fetchMyDiceSkins, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
   type Ability, type Atributos, type CharacterResourceEntry, type GameTrait, type Item, type OwnedDiceSkin,
@@ -440,6 +440,7 @@ const EFFORT_LEVELS = [1, 2, 3, 4]
 export function AbilityCard({
   icon, name, tipo, atributo, atributos, resources, resourceEntry, description, custo, ability, itemRef, characterName,
   minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource, diceModifier = 0, onRoll, onResolved,
+  armMode, onArmedLevelChange, confirmToken, cancelToken,
 }: {
   icon: string; name: string; tipo: string
   atributo: keyof Atributos | null
@@ -477,9 +478,24 @@ export function AbilityCard({
    * a Arena subtraindo vida/casca de um alvo real) escuta aqui em vez de duplicar a
    * lógica de rolagem/resolução. A ficha não usa isso (não tem alvo pra aplicar). */
   onResolved?: (effects: ResolvedEffect[]) => void
+  /** true = escolher um nível NÃO rola na hora — só "arma" esse nível (ver
+   * `onArmedLevelChange`) e espera confirmação externa (`confirmToken`/`cancelToken`)
+   * antes de rolar de verdade. Usado pela Arena: escolhe o Esforço, aí o alcance
+   * aparece no mapa, e só um clique válido confirma. A ficha nunca passa isso. */
+  armMode?: boolean
+  /** Avisa quem chama qual nível está "armado" agora (`null` = nenhum) — só muda em
+   * `armMode`. É o gatilho pra Arena mostrar o alcance no mapa. */
+  onArmedLevelChange?: (level: number | null) => void
+  /** Incrementar confirma o nível armado agora (rola de verdade). Só em `armMode`. */
+  confirmToken?: number
+  /** Incrementar cancela o nível armado (sem rolar). Só em `armMode`. */
+  cancelToken?: number
 }) {
   const [activeLevel, setActiveLevel] = useState<number | null>(null)
+  const [armedLevel, setArmedLevel] = useState<number | null>(null)
   const { showDiceRoll } = useDiceStageContext()
+  const prevConfirmToken = useRef(confirmToken)
+  const prevCancelToken = useRef(cancelToken)
 
   const baseDice = Math.max(1, (atributo ? Math.round(atributos[atributo]) : 1) + diceModifier)
   // Habilidade cujo Cálculo lê dano/bloqueio da arma equipada (fonte "Dano/Bloqueio
@@ -510,7 +526,6 @@ export function AbilityCard({
 
     const ctx: RollContext = { ...weaponContext, hits: successes }
     const resolvedEffects = resolveAbilityEffects(ability, atributos, resources, ctx)
-    onResolved?.(resolvedEffects)
 
     const lines = []
     if (description) lines.push(description)
@@ -523,7 +538,10 @@ export function AbilityCard({
       }
     }
 
-    showDiceRoll(dice, `${characterName} rolou ${name}`, lines.join('\n') || undefined, buildAppearances(dice.length))
+    // `onResolved` só dispara quando o jogador FECHA o modal de resultado (clicou
+    // "OK") — primeiro rola, primeiro mostra o resultado, só depois o golpe "bate"
+    // de verdade (dano aplicado, efeito visual etc). Nunca antes disso.
+    showDiceRoll(dice, `${characterName} rolou ${name}`, lines.join('\n') || undefined, buildAppearances(dice.length), () => onResolved?.(resolvedEffects))
 
     if (resourceEntry) {
       const cost = effortCost(custo, level)
@@ -533,6 +551,45 @@ export function AbilityCard({
     onEffortUsed?.(level)
     onRoll?.()
   }
+
+  /** Em `armMode`, escolher um nível não rola — só arma, esperando confirmação
+   * externa (a Arena mostra o alcance no mapa e traduz o clique seguinte em
+   * `confirmToken`/`cancelToken`). Fora de `armMode`, comportamento de sempre. */
+  function commitLevel(level: number) {
+    if (armMode) {
+      setArmedLevel(level)
+      onArmedLevelChange?.(level)
+    } else {
+      rollEffort(level)
+    }
+  }
+
+  // Os dois efeitos abaixo reagem a um sinal EXTERNO (a Arena incrementando o
+  // token depois de um clique no mapa) pra executar uma ação imperativa (rolar de
+  // verdade, ou só destravar o card) — não é sincronizar estado derivado de props,
+  // é a única ponte possível entre "clique no canvas" (fora deste componente) e o
+  // `armedLevel` que só existe aqui dentro.
+  useEffect(() => {
+    if (confirmToken === undefined || confirmToken === prevConfirmToken.current) return
+    prevConfirmToken.current = confirmToken
+    if (armedLevel === null) return
+    const level = armedLevel
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reação a um sinal externo (token da Arena), não sincronização de estado derivado
+    setArmedLevel(null)
+    onArmedLevelChange?.(null)
+    rollEffort(level)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage ao token mudar, não a armedLevel/callbacks
+  }, [confirmToken])
+
+  useEffect(() => {
+    if (cancelToken === undefined || cancelToken === prevCancelToken.current) return
+    prevCancelToken.current = cancelToken
+    if (armedLevel === null) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reação a um sinal externo (token da Arena), não sincronização de estado derivado
+    setArmedLevel(null)
+    onArmedLevelChange?.(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage ao token mudar, não a armedLevel/callbacks
+  }, [cancelToken])
 
   return (
     <div className="ddb-panel p-4" style={{ width: 244, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -577,18 +634,19 @@ export function AbilityCard({
             {EFFORT_LEVELS.map(level => {
               const cost = effortCost(custo, level)
               const active = activeLevel === level
+              const armed = armedLevel === level
               const usable = resourceEntry.current >= cost && level >= minEffortLevel
               return (
                 <button
                   key={level}
                   type="button"
-                  onClick={() => rollEffort(level)}
+                  onClick={() => commitLevel(level)}
                   disabled={!usable}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                     padding: '0.35rem 0.55rem', borderRadius: 6, cursor: usable ? 'pointer' : 'not-allowed',
-                    border: `1px solid rgba(var(--gold-rgb),${active ? 0.6 : 0.25})`,
-                    background: active ? 'rgba(var(--gold-rgb),0.16)' : 'var(--bg-secondary)',
+                    border: `1px solid ${armed ? 'rgba(var(--error-rgb),0.8)' : `rgba(var(--gold-rgb),${active ? 0.6 : 0.25})`}`,
+                    background: armed ? 'rgba(var(--error-rgb),0.18)' : active ? 'rgba(var(--gold-rgb),0.16)' : 'var(--bg-secondary)',
                     opacity: usable ? 1 : 0.4,
                   }}
                 >
@@ -598,22 +656,35 @@ export function AbilityCard({
               )
             })}
           </div>
+          {armedLevel !== null && (
+            <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', color: 'var(--error)', marginTop: '0.4rem', textAlign: 'center' }}>
+              Clique num quadrado vermelho pra atacar, ou fora pra cancelar.
+            </p>
+          )}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => rollEffort(1)}
-          disabled={minEffortLevel > 1}
-          title={minEffortLevel > 1 ? 'Outra mão já atacou nesse turno — precisaria de Esforço pra atacar de novo.' : undefined}
-          style={{
-            fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text)',
-            padding: '0.4rem 0.6rem', borderRadius: 6, cursor: minEffortLevel > 1 ? 'not-allowed' : 'pointer',
-            border: '1px solid rgba(var(--gold-rgb),0.25)', background: 'var(--bg-secondary)',
-            opacity: minEffortLevel > 1 ? 0.4 : 1,
-          }}
-        >
-          Rolar {baseDice}d6
-        </button>
+        <div>
+          <button
+            type="button"
+            onClick={() => commitLevel(1)}
+            disabled={minEffortLevel > 1}
+            title={minEffortLevel > 1 ? 'Outra mão já atacou nesse turno — precisaria de Esforço pra atacar de novo.' : undefined}
+            style={{
+              fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text)',
+              padding: '0.4rem 0.6rem', borderRadius: 6, cursor: minEffortLevel > 1 ? 'not-allowed' : 'pointer',
+              border: `1px solid ${armedLevel !== null ? 'rgba(var(--error-rgb),0.8)' : 'rgba(var(--gold-rgb),0.25)'}`,
+              background: armedLevel !== null ? 'rgba(var(--error-rgb),0.18)' : 'var(--bg-secondary)',
+              opacity: minEffortLevel > 1 ? 0.4 : 1,
+            }}
+          >
+            Rolar {baseDice}d6
+          </button>
+          {armedLevel !== null && (
+            <p style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', color: 'var(--error)', marginTop: '0.4rem', textAlign: 'center' }}>
+              Clique num quadrado vermelho pra atacar, ou fora pra cancelar.
+            </p>
+          )}
+        </div>
       )}
     </div>
   )

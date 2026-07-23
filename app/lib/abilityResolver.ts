@@ -262,5 +262,8 @@ export function abilityRequiresWeapon(ability: Ability): boolean {
     return ownEffect || step.child_steps.some(stepNeedsWeapon)
   }
 
-  return ability.steps.some(stepNeedsWeapon)
+  // Algumas fontes de Ability (ex: trilhas no rascunho de criação, antes do
+  // personagem existir de verdade) não trazem `steps` no payload — sem árvore
+  // pra ler, não tem como depender de arma, então não trava por engano.
+  return (ability.steps ?? []).some(stepNeedsWeapon)
 }

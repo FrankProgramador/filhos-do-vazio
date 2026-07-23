@@ -106,13 +106,87 @@ export type PartyMemberStatus = {
 }
 
 /**
+ * Card compacto estilo "jogo de luta" (HUD de arena) — só avatar + nome + barra de
+ * vida (primeiro vital da lista, tipicamente Coração) + os demais vitais em texto
+ * pequeno. `mirrored` espelha o layout inteiro (avatar/texto/barra da direita pra
+ * esquerda) — usado pro lutador do lado direito da tela, igual Street Fighter.
+ */
+function CompactMemberBar({ member, mirrored }: { member: PartyMemberStatus; mirrored: boolean }) {
+  const [health, ...otherVitals] = member.vitals
+  const pct = health && health.max > 0 ? Math.max(0, Math.min(100, (health.current / health.max) * 100)) : 0
+
+  return (
+    <div
+      className="ddb-panel p-2"
+      style={{ display: 'flex', flexDirection: mirrored ? 'row-reverse' : 'row', alignItems: 'center', gap: '0.6rem', width: 240 }}
+    >
+      <div style={{
+        width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+        border: '2px solid rgba(var(--gold-rgb),0.4)', background: 'var(--bg-secondary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {member.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={member.avatar} alt={`Avatar de ${member.name}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '0.9rem', color: 'var(--gold)' }}>
+            {member.name ? member.name.charAt(0).toUpperCase() : '?'}
+          </span>
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0, textAlign: mirrored ? 'right' : 'left' }}>
+        <div
+          className="truncate"
+          style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.66rem', fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}
+        >
+          {member.name}
+        </div>
+
+        {health && (
+          <div style={{ position: 'relative', height: 10, borderRadius: 5, background: 'rgba(0,0,0,0.45)', overflow: 'hidden', border: '1px solid rgba(var(--gold-rgb),0.3)' }}>
+            <div
+              style={{
+                position: 'absolute', top: 0, bottom: 0, [mirrored ? 'right' : 'left']: 0,
+                width: `${pct}%`, background: health.color, transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 3, justifyContent: mirrored ? 'flex-end' : 'flex-start' }}>
+          {otherVitals.map(v => (
+            <span key={v.key} style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.58rem', color: 'var(--text-muted)' }}>
+              {v.icon} {v.current}/{v.max}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * UI de status — COMPARTILHADA: vida/atributos vistos por todo mundo na mesa
  * (todos os jogadores + o mestre), não só pelo dono do personagem — essa é a
  * diferença chave em relação à `ActionBar`, que é privada. Um card por membro;
  * na ficha solo, `members` tem 1 item só (o próprio personagem) — é só o caso
  * normal de "mesa com 1 jogador", não um caso especial.
+ *
+ * `variant='compact'` (arena 1x1): HUD estilo jogo de luta — primeiro membro fica à
+ * esquerda, segundo à direita (espelhado), pensado pra ficar fixo no topo da tela.
  */
-export default function PartyStatusBar({ members }: { members: PartyMemberStatus[] }) {
+export default function PartyStatusBar({ members, variant = 'full' }: { members: PartyMemberStatus[]; variant?: 'full' | 'compact' }) {
+  if (variant === 'compact') {
+    return (
+      <>
+        {members.map((member, i) => (
+          <CompactMemberBar key={member.id} member={member} mirrored={i > 0} />
+        ))}
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {members.map(member => (

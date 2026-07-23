@@ -5,7 +5,7 @@ import Dice3D, { type Dice3DHandle } from '@/components/Dice3D'
 import type { DiceAppearance, DiceColorset } from '@/app/lib/dice/diceEngine'
 import { DICE_RESULT_DELAY, DiceResultModal } from '@/app/painel/jogo/shared'
 
-type DiceResultState = { rolls: number[]; title?: string; resultText?: string }
+type DiceResultState = { rolls: number[]; title?: string; resultText?: string; onComplete?: () => void }
 
 type DiceStageContextValue = {
   /** Anima os dados já decididos (pelo cliente no solo, pelo servidor no mano a
@@ -17,8 +17,11 @@ type DiceStageContextValue = {
    * os dados dessa rolagem com uma cor só (ex: azul pro jogador A, vermelho pro
    * B — uso atual); um array de `DiceAppearance` (mesmo tamanho de `rolls`) dá
    * uma skin própria (cor+material+textura) pra CADA dado físico, todos na
-   * mesma animação. */
-  showDiceRoll: (rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) => void
+   * mesma animação. `onComplete`: dispara quando o jogador fecha o modal de
+   * resultado (clicou "OK") — é aqui, e só aqui, que efeitos de verdade (dano,
+   * cura, etc) devem acontecer: primeiro rola, primeiro mostra o resultado, só
+   * DEPOIS o golpe "bate" — nunca aplicar o efeito antes do jogador ver a rolagem. */
+  showDiceRoll: (rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[], onComplete?: () => void) => void
   /** true desde `showDiceRoll` até o "OK" do modal — use pra esconder outra UI
    * (ex: menu de ações) enquanto a rolagem não terminou de vez. */
   resolving: boolean
@@ -58,7 +61,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  function showDiceRoll(rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[]) {
+  function showDiceRoll(rolls: number[], title?: string, resultText?: string, colorsetOrAppearances?: DiceColorset | DiceAppearance[], onComplete?: () => void) {
     setResolving(true)
     if (diceResultTimeoutRef.current) clearTimeout(diceResultTimeoutRef.current)
 
@@ -76,7 +79,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
     // "OK" apagava a mesa no meio da sequência, fazendo os dados "sumirem".
     promise
       ?.then(() => {
-        diceResultTimeoutRef.current = setTimeout(() => setDiceResult({ rolls, title, resultText }), DICE_RESULT_DELAY)
+        diceResultTimeoutRef.current = setTimeout(() => setDiceResult({ rolls, title, resultText, onComplete }), DICE_RESULT_DELAY)
       })
       .catch(err => {
         console.error('[Dice3D] rolagem falhou:', err)
@@ -85,6 +88,7 @@ export function DiceStageProvider({ children }: { children: ReactNode }) {
   }
 
   function closeDiceResult() {
+    diceResult?.onComplete?.()
     setDiceResult(null)
     setResolving(false)
     diceBoxRef.current?.clear()

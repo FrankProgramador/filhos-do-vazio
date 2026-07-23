@@ -1,6 +1,6 @@
 'use client'
 
-import { cloneElement, useState, type CSSProperties, type ReactElement } from 'react'
+import { cloneElement, useEffect, useState, type CSSProperties, type ReactElement } from 'react'
 import { HoverTip } from './SheetPrimitives'
 
 export type ActionCardSpec = {
@@ -9,7 +9,18 @@ export type ActionCardSpec = {
   name: string
   disabled: boolean
   disabledReason: string | null
-  node: ReactElement<{ onRoll?: () => void }>
+  /** Alcance dessa habilidade em células (Chebyshev) — quem chama usa isso pra
+   * pintar de vermelho no mapa onde ela pode acertar, depois que o Esforço é
+   * escolhido (ver `armMode`). Ausente = sem mapa pra pintar (ex: ficha, fora de
+   * uma arena). */
+  range?: number
+  node: ReactElement<{
+    onRoll?: () => void
+    armMode?: boolean
+    onArmedLevelChange?: (level: number | null) => void
+    confirmToken?: number
+    cancelToken?: number
+  }>
 }
 
 /**
@@ -27,7 +38,10 @@ export type ActionCardSpec = {
  * `mode`: hoje só existe `'attack'`. `'defense'` (opções ao levar um ataque) entra
  * depois, no mesmo componente — troca só o que `actionCards` contém, não a barra.
  */
-export default function ActionBar({ isMyTurn, actionCards, onCancelSelection, onEndTurn }: {
+export default function ActionBar({
+  isMyTurn, actionCards, onCancelSelection, onEndTurn, onOpenCardChange,
+  armMode, onArmedLevelChange, confirmToken, cancelToken, onAbilityRolled,
+}: {
   isMyTurn: boolean
   mode: 'attack'
   actionCards: ActionCardSpec[]
@@ -35,9 +49,45 @@ export default function ActionBar({ isMyTurn, actionCards, onCancelSelection, on
   onCancelSelection?: () => void
   /** Botão "Passar turno" na ponta direita da barra — ausente = não renderiza. */
   onEndTurn?: () => void
+  /** Avisa quem chama qual card está aberto agora (ou `null`, fechado) — usado pra
+   * pintar o alcance da habilidade selecionada no mapa (ver `ActionCardSpec.range`). */
+  onOpenCardChange?: (key: string | null) => void
+  /** Repassado pro `AbilityCard` aberto — escolher o Esforço "arma" em vez de rolar
+   * na hora (ver `AbilityCard.armMode`). Quando armado, o fundo escuro do card some
+   * (sem desmontar o card — só escondido) pra deixar o mapa clicável por baixo. */
+  armMode?: boolean
+  /** Repassa o nível armado (ou `null`) do card aberto pra quem chama — é o gatilho
+   * pra pintar o alcance no mapa. */
+  onArmedLevelChange?: (level: number | null) => void
+  /** Incrementar confirma o nível armado do card aberto agora. */
+  confirmToken?: number
+  /** Incrementar cancela o nível armado do card aberto (sem rolar). */
+  cancelToken?: number
+  /** Dispara quando a habilidade de fato ROLA (não quando só cancela) — diferente
+   * do `onRoll` interno do card, que só fecha o modal. Usado, ex., pra tirar a
+   * seleção de movimento do personagem depois que ele ataca. */
+  onAbilityRolled?: () => void
 }) {
   const [openActionCardKey, setOpenActionCardKey] = useState<string | null>(null)
+  const [armedLevel, setArmedLevel] = useState<number | null>(null)
   const openActionCard = actionCards.find(c => c.key === openActionCardKey) ?? null
+
+  useEffect(() => {
+    onOpenCardChange?.(openActionCardKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só avisa quando a chave muda, não quando o callback é recriado
+  }, [openActionCardKey])
+
+  function handleArmedLevelChange(level: number | null) {
+    setArmedLevel(level)
+    onArmedLevelChange?.(level)
+    // Nível confirmado (rolou) ou cancelado — os dois casos fecham o card de vez.
+    if (level === null) setOpenActionCardKey(null)
+  }
+
+  function openCard(key: string) {
+    setArmedLevel(null)
+    setOpenActionCardKey(key)
+  }
 
   if (!isMyTurn) return null
 
@@ -71,7 +121,7 @@ export default function ActionBar({ isMyTurn, actionCards, onCancelSelection, on
             <HoverTip key={c.key} title={c.disabledReason ? `${c.name} — ${c.disabledReason}` : c.name}>
               <button
                 type="button"
-                onClick={() => setOpenActionCardKey(c.key)}
+                onClick={() => openCard(c.key)}
                 disabled={c.disabled}
                 className="action-bar-icon-btn"
                 style={{
@@ -101,18 +151,33 @@ export default function ActionBar({ isMyTurn, actionCards, onCancelSelection, on
 
       {/* Card aberto a partir da barra — perto da base, logo acima dos ícones. `onRoll`
           fecha o card assim que a habilidade é rolada (clone só pra essa instância; o
-          mesmo `node` usado no painel "Ações" não ganha esse fechamento). */}
+          mesmo `node` usado no painel "Ações" não ganha esse fechamento).
+          Em `armMode`: uma vez que um nível é armado, o fundo escuro SOME (display:
+          none) — mas o card continua montado nessa mesma posição da árvore, só
+          escondido, pra não perder o estado interno dele (`armedLevel`) enquanto
+          espera o clique no mapa confirmar ou cancelar (ver `handleArmedLevelChange`). */}
       {openActionCard && (
         <div
           onClick={() => setOpenActionCardKey(null)}
           className="action-card-modal-backdrop"
           style={{
-            position: 'fixed', inset: 0, zIndex: 10002, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            position: 'fixed', inset: 0, zIndex: 10002,
+            display: armedLevel === null ? 'flex' : 'none',
+            alignItems: 'flex-end', justifyContent: 'center',
             background: 'rgba(0,0,0,0.6)', paddingBottom: 96,
           }}
         >
           <div className="action-card-pop-in" onClick={e => e.stopPropagation()}>
-            {cloneElement(openActionCard.node, { onRoll: () => setOpenActionCardKey(null) })}
+            {cloneElement(openActionCard.node, {
+              onRoll: () => {
+                setOpenActionCardKey(null)
+                onAbilityRolled?.()
+              },
+              armMode,
+              onArmedLevelChange: handleArmedLevelChange,
+              confirmToken,
+              cancelToken,
+            })}
           </div>
         </div>
       )}
