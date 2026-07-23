@@ -1,11 +1,20 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchMyDiceSkins, type Character, type OwnedDiceSkin } from '@/app/lib/gameData'
+import {
+  effortCost, fetchMyDiceSkins, updateCharacterResource,
+  type Character, type CharacterResourceEntry, type OwnedDiceSkin,
+} from '@/app/lib/gameData'
 import { useAuth } from '@/app/lib/auth-context'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
-import { BattleLog, DICE_APPEARANCE_DEFAULT, defaultAppearances, HeartBar, StatLine, SUCCESS_THRESHOLD, triangularCost } from './shared'
+import { BattleLog, DICE_APPEARANCE_DEFAULT, defaultAppearances, SUCCESS_THRESHOLD } from './shared'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
+import { resolveAbilityEffects, type ResolvedEffect, type RollContext } from '@/app/lib/abilityResolver'
+import {
+  AbilityCard, FALLBACK_UNARMED_ABILITY, findResourceEntry, resolveHandActions, resourceValue, type ResolvedHandAction,
+} from '@/components/CharacterSheetCard'
+import ActionBar, { type ActionCardSpec } from '@/components/ActionBar'
+import PartyStatusBar, { type PartyMemberStatus } from '@/components/PartyStatusBar'
 
 type ArenaToken = {
   id: string
@@ -15,11 +24,11 @@ type ArenaToken = {
   row: number
   movement: number
   movementUsed: number
-  hp: number
-  maxHp: number
-  poder: number
+  /** Casca "de combate" — desgasta durante a luta (absorve dano até esgotar), começa
+   * igual ao atributo real mas diverge entre os dois lados conforme apanham. Vida
+   * (Coração), Estamina e Alma NÃO ficam aqui — vêm de verdade de `resources`/
+   * `shadowResources` (os recursos reais da ficha), não de um número sintético do token. */
   casca: number
-  estaminaMax: number
   attacked: boolean
   isEnemy?: boolean
   avatar?: string | null
@@ -100,13 +109,6 @@ function generateRandomFloors(): string[][] {
   )
 }
 
-type AttackOption = { id: string; label: string; range: number; baseDamage: number }
-
-const ATTACK_OPTIONS: AttackOption[] = [
-  { id: 'unarmed', label: 'Desarmado', range: 1, baseDamage: 1 },
-  { id: 'rock', label: 'Jogar pedra', range: 6, baseDamage: 1 },
-]
-
 const HIT_EFFECT_DURATION = 500
 const DEFAULT_ZOOM = 1.5
 const DRAG_THRESHOLD = 4
@@ -122,24 +124,21 @@ function rollDice(count: number): number[] {
 }
 
 /**
- * 1º sucesso aplica o dano base da opção de ataque; cada sucesso extra soma +1 — esse é o dano bruto.
- * A casca do defensor funciona como um escudo que se desgasta: absorve o dano bruto até se
- * esgotar; o que passar disso ("excedente") é o dano real, aplicado à vida. Um acerto sempre
- * causa pelo menos 1 de dano real, mesmo que a casca absorva todo o resto.
+ * A casca do defensor funciona como um escudo que se desgasta: absorve o dano bruto
+ * (já resolvido pelo motor real de habilidades — `resolveAbilityEffects`) até se
+ * esgotar; o que passar disso ("excedente") é o dano real, aplicado à vida. Um
+ * acerto sempre causa pelo menos 1 de dano real, mesmo que a casca absorva o resto.
  */
-function resolveDamage(rolls: number[], baseDamage: number, defenderCasca: number) {
-  const successes = rolls.filter(roll => roll >= SUCCESS_THRESHOLD).length
-
-  if (successes === 0) {
-    return { successes: 0, rawDamage: 0, damage: 0, hit: false, remainingCasca: defenderCasca }
-  }
-
-  const rawDamage = baseDamage + (successes - 1)
+function applyCascaAbsorption(rawDamage: number, defenderCasca: number) {
+  if (rawDamage <= 0) return { damage: 0, remainingCasca: defenderCasca }
   const cascaAbsorbed = Math.min(rawDamage, defenderCasca)
-  const overflow = rawDamage - cascaAbsorbed
-  const damage = Math.max(1, overflow)
+  const damage = Math.max(1, rawDamage - cascaAbsorbed)
+  return { damage, remainingCasca: defenderCasca - cascaAbsorbed }
+}
 
-  return { successes, rawDamage, damage, hit: true, remainingCasca: defenderCasca - cascaAbsorbed }
+/** Soma só os efeitos de dano resolvidos (ignora aplicar-condição etc, fora de escopo aqui). */
+function totalDamageFromEffects(effects: ResolvedEffect[]): number {
+  return effects.filter(e => e.behaviorSlug === 'damage').reduce((sum, e) => sum + e.amount, 0)
 }
 
 /** Distância "de rei" (8 direções) — usada pra alcance de ataque, que pode acertar na diagonal. */
@@ -273,35 +272,30 @@ export default function Arena({ character, onExit }: { character: Character; onE
       row: 7,
       movement: 5,
       movementUsed: 0,
-      hp: 4,
-      maxHp: 4,
-      poder: character.poder,
       casca: character.casca,
-      estaminaMax: character.estamina,
       attacked: false,
       avatar: character.avatar,
       large: character.size?.slug === 'grande',
     },
     {
-      id: 'enemy',
-      label: 'E',
-      color: '#a34a4a',
+      // A sombra é uma CÓPIA do próprio personagem (mesmos atributos/itens/habilidades,
+      // ver `character` reaproveitado direto pra ela) — não um inimigo sintético
+      // aleatório. Token bem mais escuro que o do jogador (#b8924a) pra diferenciar.
+      id: 'shadow',
+      label: character.name.charAt(0).toUpperCase(),
+      color: '#241f2a',
       col: 15,
       row: 7,
-      movement: 3,
+      movement: 5,
       movementUsed: 0,
-      hp: 4,
-      maxHp: 4,
+      casca: character.casca,
       isEnemy: true,
-      poder: randomBetween(2, 3),
-      casca: randomBetween(2, 3),
-      estaminaMax: randomBetween(2, 3),
       attacked: false,
+      avatar: character.avatar,
+      large: character.size?.slug === 'grande',
     },
   ])
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null)
-  const [pendingAttackOption, setPendingAttackOption] = useState<{ tokenId: string; option: AttackOption } | null>(null)
-  const [selectedAttack, setSelectedAttack] = useState<{ tokenId: string; option: AttackOption; stamina: number } | null>(null)
   const [hoverCell, setHoverCell] = useState<Cell | null>(null)
   const [turn, setTurn] = useState(1)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -330,6 +324,73 @@ export default function Arena({ character, onExit }: { character: Character; onE
       return { foreground: skin.foreground_color, background: skin.background_color, material: skin.material, texture: skin.texture, pipStyle: skin.pip_style }
     })
   }
+
+  // Recursos do jogador (mesmo padrão da ficha — espelha `character.resources`,
+  // persiste via API) e da sombra (cópia LOCAL própria, sem persistir — ela não é um
+  // personagem de verdade no banco, só empresta os dados do jogador pra essa luta).
+  const [resources, setResources] = useState<CharacterResourceEntry[]>(character.resources)
+  const [shadowResources, setShadowResources] = useState<CharacterResourceEntry[]>(character.resources)
+
+  function handleResourceToggle(slug: string, next: number) {
+    setResources(prev => prev.map(r => (r.resource.slug === slug ? { ...r, current: next } : r)))
+    updateCharacterResource(character.id, slug, next, token).catch(err => console.error('Falha ao atualizar recurso', err))
+  }
+
+  const unarmedAbility = character.abilities.find(a => a.slug === 'ataque-desarmado')
+    ?? character.abilities.find(a => a.is_innate)
+    ?? FALLBACK_UNARMED_ABILITY
+
+  const mainHandItem = character.items.find(i => i.pivot.slot === 'main_hand') ?? null
+  const offHandItem = character.items.find(i => i.pivot.slot === 'off_hand_1') ?? null
+  const isTwoHanded = Boolean(mainHandItem?.is_two_handed)
+
+  /** Mesmo padrão de `resolveHandActions`/`buildActionCards` da ficha — só ações de
+   * ataque de mão nessa passada (sem passivas/outras habilidades na Arena ainda). */
+  const handActions: ResolvedHandAction[] = isTwoHanded
+    ? resolveHandActions(mainHandItem, unarmedAbility, 'Duas Mãos', 'both')
+    : [
+        ...resolveHandActions(mainHandItem, unarmedAbility, 'Mão Principal', 'main'),
+        ...resolveHandActions(offHandItem, unarmedAbility, 'Mão Auxiliar', 'off'),
+      ]
+
+  // Vida de combate = o recurso Coração DE VERDADE (não um número sintético do
+  // token) — Estamina/Alma também vêm daqui. `resources` é o do jogador (persiste na
+  // ficha de verdade); `shadowResources` é a cópia local da sombra (não persiste).
+  const playerCoracao = resourceValue(resources, 'coracao', Math.max(1, Math.round(character.coracao)))
+  const shadowCoracao = resourceValue(shadowResources, 'coracao', Math.max(1, Math.round(character.coracao)))
+  const battleOver = playerCoracao.current <= 0 || shadowCoracao.current <= 0
+
+  /** Subtrai dano bruto (já resolvido pelo motor real) do recurso Coração de um dos
+   * lados, passando primeiro pela absorção de casca (que continua um número "de
+   * combate" à parte, desgastando independente pra cada token). */
+  function applyDamageToCoracao(side: 'player' | 'shadow', rawDamage: number): number {
+    if (rawDamage <= 0) return 0
+    const targetToken = side === 'player' ? player : shadow
+    const setTargetResources = side === 'player' ? setResources : setShadowResources
+    const { damage, remainingCasca } = applyCascaAbsorption(rawDamage, targetToken.casca)
+
+    setTokens(prev => prev.map(t => (t.id === targetToken.id ? { ...t, casca: remainingCasca } : t)))
+    setTargetResources(prev => prev.map(r => (r.resource.slug === 'coracao' ? { ...r, current: Math.max(0, r.current - damage) } : r)))
+    if (side === 'player') {
+      updateCharacterResource(character.id, 'coracao', Math.max(0, playerCoracao.current - damage), token).catch(err => console.error('Falha ao atualizar recurso', err))
+    }
+
+    return damage
+  }
+
+  /** Aplica o dano resolvido (via `onResolved` do `AbilityCard`) na sombra — mesma
+   * absorção de casca que a Arena já usava, só que a partir do dano REAL do motor de
+   * habilidades em vez do dano fixo de `ATTACK_OPTIONS`. */
+  function applyDamageToShadow(attackerLabel: string, abilityName: string, effects: ResolvedEffect[]) {
+    const rawDamage = totalDamageFromEffects(effects)
+    if (rawDamage <= 0) return
+    const damage = applyDamageToCoracao('shadow', rawDamage)
+
+    triggerHitEffect(shadow.id)
+    showBanner(`${shadow.label} -${damage} de vida`)
+    logEvent(`${attackerLabel} usa ${abilityName} — ${damage} de dano em ${shadow.label}.`)
+  }
+
   const tokensRef = useRef(tokens)
   const animatingRef = useRef(false)
   const bannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -444,12 +505,10 @@ export default function Arena({ character, onExit }: { character: Character; onE
 
   function clearSelection() {
     setSelectedTokenId(null)
-    setPendingAttackOption(null)
-    setSelectedAttack(null)
   }
 
   const player = tokens.find(t => !t.isEnemy)!
-  const enemy = tokens.find(t => t.isEnemy)!
+  const shadow = tokens.find(t => t.isEnemy)!
   const selectedToken = tokens.find(t => t.id === selectedTokenId) ?? null
   const reachable = useMemo(() => {
     if (!selectedToken) return null
@@ -466,22 +525,52 @@ export default function Arena({ character, onExit }: { character: Character; onE
     return getPath(reachable, `${selectedToken.col},${selectedToken.row}`, key)
   }, [selectedToken, reachable, hoverCell])
 
-  const attackRange = useMemo(() => {
-    if (!selectedAttack) return null
-    const attacker = tokens.find(t => t.id === selectedAttack.tokenId)
-    if (!attacker) return null
-    const attackerCells = tokenCells(attacker)
-    const cells: Cell[] = []
-    for (let c = 0; c < COLS; c++) {
-      for (let r = 0; r < ROWS; r++) {
-        if (wallCells.has(`${c},${r}`)) continue
-        if (occupiesCell(attacker, c, r)) continue
-        const d = footprintDistanceToCell(attackerCells, { col: c, row: r })
-        if (d <= selectedAttack.option.range) cells.push({ col: c, row: r })
-      }
-    }
-    return cells
-  }, [selectedAttack, tokens, wallCells])
+  /** Ataque exige corpo a corpo por enquanto (sem alcance à distância tipo Arremesso nessa
+   * passada) — mesma exigência de adjacência que o resto da Arena já usa (IA da sombra, etc). */
+  const isPlayerAdjacentToShadow = footprintDistanceToCell(tokenCells(player), { col: shadow.col, row: shadow.row }) === 1
+
+  /** Só existe ação real quando o jogador está selecionado E adjacente à sombra —
+   * mesmo card cheio (`AbilityCard`) e mesmo motor (`resolveAbilityEffects`) que a
+   * ficha usa, com `onResolved` aplicando o dano de verdade na sombra. */
+  const actionCards: ActionCardSpec[] = (!battleOver && selectedTokenId === 'player' && isPlayerAdjacentToShadow)
+    ? handActions.map(action => {
+        const resourceEntry = findResourceEntry(resources, action.ability.resource?.slug)
+        const insufficientResource = resourceEntry ? resourceEntry.current < effortCost(action.ability.custo, 1) : false
+        const disabledReason = player.attacked
+          ? 'Já atacou nesse turno'
+          : insufficientResource ? `${resourceEntry!.resource.name} insuficiente` : null
+
+        return {
+          key: action.key,
+          icon: action.icon,
+          name: action.name,
+          disabled: disabledReason !== null,
+          disabledReason,
+          node: (
+            <AbilityCard
+              key={action.key}
+              icon={action.icon}
+              name={action.name}
+              tipo={action.tipo}
+              atributo={action.ability.atributo}
+              atributos={character}
+              resources={resources}
+              resourceEntry={resourceEntry}
+              description={action.ability.description}
+              custo={action.ability.custo}
+              ability={action.ability}
+              itemRef={action.itemRef}
+              characterName={character.name}
+              locked={player.attacked}
+              buildAppearances={myAppearances}
+              onSpendResource={handleResourceToggle}
+              onEffortUsed={() => setTokens(prev => prev.map(t => (t.id === 'player' ? { ...t, attacked: true } : t)))}
+              onResolved={effects => applyDamageToShadow(player.label, action.ability.name, effects)}
+            />
+          ),
+        }
+      })
+    : []
 
   function drawToken(ctx: CanvasRenderingContext2D, token: ArenaToken, col: number, row: number, isSelected: boolean) {
     const wide = !!token.large
@@ -604,15 +693,6 @@ export default function Arena({ character, onExit }: { character: Character; onE
       })
     }
 
-    if (attackRange) {
-      ctx.fillStyle = 'rgba(163, 74, 74, 0.35)'
-      ctx.strokeStyle = 'rgba(163, 74, 74, 0.75)'
-      attackRange.forEach(({ col, row }) => {
-        ctx.fillRect(col * CELL, row * CELL, CELL, CELL)
-        ctx.strokeRect(col * CELL + 0.5, row * CELL + 0.5, CELL - 1, CELL - 1)
-      })
-    }
-
     if (previewPath && previewPath.length > 1) {
       ctx.strokeStyle = 'rgba(240, 209, 138, 0.9)'
       ctx.lineWidth = 3
@@ -644,7 +724,7 @@ export default function Arena({ character, onExit }: { character: Character; onE
     const ctx = canvas.getContext('2d')
     if (ctx) draw(ctx)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- draw closes over these same deps, re-declared each render
-  }, [tokens, reachable, selectedTokenId, previewPath, attackRange, imagesVersion])
+  }, [tokens, reachable, selectedTokenId, previewPath, imagesVersion])
 
   function tweenStep(from: Cell, to: Cell, duration: number, onFrame: (col: number, row: number) => void, onDone: () => void) {
     const start = performance.now()
@@ -696,50 +776,13 @@ export default function Arena({ character, onExit }: { character: Character; onE
       suppressClickRef.current = false
       return
     }
-    if (animatingRef.current) return
+    if (animatingRef.current || battleOver) return
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     const col = Math.floor(((e.clientX - rect.left) / rect.width) * COLS)
     const row = Math.floor(((e.clientY - rect.top) / rect.height) * ROWS)
     if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return
-
-    if (selectedAttack) {
-      const attacker = tokens.find(t => t.id === selectedAttack.tokenId)
-      const inRange = attacker && footprintDistanceToCell(tokenCells(attacker), { col, row }) <= selectedAttack.option.range
-      const target = inRange ? tokens.find(t => t.id !== attacker!.id && occupiesCell(t, col, row)) : undefined
-      if (target && attacker) {
-        const rolls = rollDice(selectedAttack.stamina + attacker.poder)
-        const result = resolveDamage(rolls, selectedAttack.option.baseDamage, target.casca)
-        const rollsText = rolls.join(', ')
-
-        setTokens(prev =>
-          prev.map(t => {
-            if (t.id === attacker.id) return { ...t, attacked: true }
-            if (t.id === target.id && result.hit) {
-              return { ...t, hp: Math.max(0, t.hp - result.damage), casca: result.remainingCasca }
-            }
-            return t
-          })
-        )
-
-        diceStage.showDiceRoll(
-          rolls,
-          `${attacker.label} usa ${selectedAttack.option.label}`,
-          result.hit ? `Você causou ${result.damage} de dano em ${target.label}.` : 'Você errou o ataque.',
-          myAppearances(rolls.length)
-        )
-        if (result.hit) triggerHitEffect(target.id)
-
-        const message = result.hit
-          ? `${attacker.label} usa ${selectedAttack.option.label}: ${result.successes} sucesso(s) [${rollsText}] — ${result.damage} de dano em ${target.label} (casca restante: ${result.remainingCasca})`
-          : `${attacker.label} usa ${selectedAttack.option.label} e erra [${rollsText}]`
-        showBanner(result.hit ? `${target.label} -${result.damage} de vida` : 'Errou!')
-        logEvent(message)
-      }
-      setSelectedAttack(null)
-      return
-    }
 
     if (selectedToken && reachable) {
       const key = `${col},${row}`
@@ -761,8 +804,6 @@ export default function Arena({ character, onExit }: { character: Character; onE
     const clicked = tokens.find(t => occupiesCell(t, col, row))
     if (clicked && !clicked.isEnemy) {
       setSelectedTokenId(prev => (prev === clicked.id ? null : clicked.id))
-      setPendingAttackOption(null)
-      setSelectedAttack(null)
     } else {
       clearSelection()
     }
@@ -816,27 +857,51 @@ export default function Arena({ character, onExit }: { character: Character; onE
     setHoverCell(prev => (prev && prev.col === col && prev.row === row ? prev : { col, row }))
   }
 
-  function handleSelectAttack(option: AttackOption) {
-    if (!selectedToken) return
-    setPendingAttackOption({ tokenId: selectedToken.id, option })
-  }
+  /**
+   * IA básica da sombra: escolhe a primeira ação de ATAQUE disponível (mesmas mãos/
+   * habilidades do jogador, já calculadas em `handActions` — é literalmente a mesma
+   * pessoa), rola no nível de Esforço 1 fixo (sem escalar — "básica") e resolve pelo
+   * MESMO motor real (`resolveAbilityEffects`), gastando do recurso próprio da sombra
+   * (`shadowResources`, não o do jogador). Sem checagem de recurso suficiente — a IA
+   * básica sempre tenta atacar.
+   */
+  function computeShadowAttack(): { rolls: number[]; abilityName: string; effects: ResolvedEffect[] } | null {
+    const attackAction = handActions.find(a => a.tipo === 'Ataque')
+    if (!attackAction) return null
 
-  function handleSelectStamina(stamina: number) {
-    if (!pendingAttackOption) return
-    setSelectedAttack({ tokenId: pendingAttackOption.tokenId, option: pendingAttackOption.option, stamina })
-    setPendingAttackOption(null)
+    const ability = attackAction.ability
+    const baseDice = Math.max(1, ability.atributo ? Math.round(character[ability.atributo]) : 1)
+    const dice = rollDice(baseDice)
+    const hits = dice.filter(d => d >= SUCCESS_THRESHOLD).length
+
+    const itemRef = attackAction.itemRef
+    const ctx: RollContext = {
+      hits,
+      weapon_base_damage: itemRef?.base_damage ?? null,
+      weapon_block_value: itemRef?.block_value ?? null,
+      weapon_weight: itemRef ? Number(itemRef.weight) : null,
+    }
+    const effects = resolveAbilityEffects(ability, character, shadowResources, ctx)
+
+    const resourceEntry = findResourceEntry(shadowResources, ability.resource?.slug)
+    if (resourceEntry) {
+      const cost = effortCost(ability.custo, 1)
+      setShadowResources(prev => prev.map(r => (r.resource.slug === resourceEntry.resource.slug ? { ...r, current: Math.max(0, r.current - cost) } : r)))
+    }
+
+    return { rolls: dice, abilityName: ability.name, effects }
   }
 
   function handleEndTurn() {
-    if (animatingRef.current) return
+    if (animatingRef.current || battleOver) return
     clearSelection()
     setHoverCell(null)
-    showBanner('Turno do inimigo')
+    showBanner('Turno da sombra')
     logEvent(`Fim do turno de ${character.name}.`)
 
     const current = tokensRef.current
     const currentPlayer = current.find(t => !t.isEnemy)
-    const currentEnemy = current.find(t => t.isEnemy)
+    const currentShadow = current.find(t => t.isEnemy)
 
     function finish(finalPos: Cell) {
       const isAdjacent = currentPlayer ? footprintDistanceToCell(tokenCells(currentPlayer), finalPos) === 1 : false
@@ -844,53 +909,55 @@ export default function Arena({ character, onExit }: { character: Character; onE
       // Calculado uma vez fora do closure de setTokens (não depende de qual token o
       // .map() está visitando) — evita o TS perder a narrowing de um `let` reatribuído
       // dentro de uma closure passada pro setState.
-      const attack = isAdjacent && currentPlayer && currentEnemy
+      const attack = isAdjacent && currentPlayer && currentShadow
         ? (() => {
-            const rolls = rollDice(currentEnemy.estaminaMax + currentEnemy.poder)
-            const result = resolveDamage(rolls, 1, currentPlayer.casca)
-            return { rolls, result, rollsText: rolls.join(', '), targetId: currentPlayer.id }
+            const computed = computeShadowAttack()
+            if (!computed) return null
+            const rawDamage = totalDamageFromEffects(computed.effects)
+            return { rolls: computed.rolls, abilityName: computed.abilityName, hit: rawDamage > 0, rawDamage }
           })()
         : null
 
-      let enemyAttackMessage: string | null = null
-      let enemyLogMessage: string | null = null
-
+      // Só posição/reset de turno aqui — o dano de verdade vai pro recurso Coração
+      // via `applyDamageToCoracao` (que já mexe em `tokens`/`resources` sozinho).
       setTokens(prev =>
         prev.map(t => {
-          if (currentEnemy && t.id === currentEnemy.id) return { ...t, col: finalPos.col, row: finalPos.row }
+          if (currentShadow && t.id === currentShadow.id) return { ...t, col: finalPos.col, row: finalPos.row }
           if (t.isEnemy) return t
-
-          const resetToken = { ...t, movementUsed: 0, attacked: false }
-          if (!attack || !currentEnemy || t.id !== attack.targetId) return resetToken
-
-          if (!attack.result.hit) {
-            enemyAttackMessage = 'O inimigo atacou e errou!'
-            enemyLogMessage = `${currentEnemy.label} ataca e erra [${attack.rollsText}]`
-            return resetToken
-          }
-
-          enemyAttackMessage = `O inimigo atacou! Você perde ${attack.result.damage} de vida`
-          enemyLogMessage = `${currentEnemy.label} ataca: ${attack.result.successes} sucesso(s) [${attack.rollsText}] — ${attack.result.damage} de dano em ${t.label} (casca restante: ${attack.result.remainingCasca})`
-          return { ...resetToken, hp: Math.max(0, t.hp - attack.result.damage), casca: attack.result.remainingCasca }
+          return { ...t, movementUsed: 0, attacked: false }
         })
       )
+
+      let shadowAttackMessage: string | null = null
+      let shadowLogMessage: string | null = null
+      let appliedDamage = 0
+
+      if (attack?.hit) {
+        appliedDamage = applyDamageToCoracao('player', attack.rawDamage)
+        shadowAttackMessage = `A sombra atacou! Você perde ${appliedDamage} de vida`
+        shadowLogMessage = `${currentShadow!.label} usa ${attack.abilityName} — ${appliedDamage} de dano em você.`
+      } else if (attack) {
+        shadowAttackMessage = 'A sombra atacou e errou!'
+        shadowLogMessage = `${currentShadow!.label} usa ${attack.abilityName} e erra`
+      }
+
       setTurn(t => t + 1)
       if (attack) {
-        const resultText = attack.result.hit ? `Você sofreu ${attack.result.damage} de dano.` : 'O inimigo errou o ataque.'
-        diceStage.showDiceRoll(attack.rolls, `${currentEnemy?.label ?? 'Inimigo'} ataca`, resultText, defaultAppearances(attack.rolls.length))
-        if (attack.result.hit) triggerHitEffect(attack.targetId)
+        const resultText = attack.hit ? `Você sofreu ${appliedDamage} de dano.` : 'A sombra errou o ataque.'
+        diceStage.showDiceRoll(attack.rolls, `${currentShadow?.label ?? 'Sombra'} usa ${attack.abilityName}`, resultText, defaultAppearances(attack.rolls.length))
+        if (attack.hit && currentPlayer) triggerHitEffect(currentPlayer.id)
       }
-      if (enemyLogMessage) logEvent(enemyLogMessage)
+      if (shadowLogMessage) logEvent(shadowLogMessage)
       logEvent(`Turno ${turn + 1} — vez de ${character.name}.`)
-      if (enemyAttackMessage) {
-        showBanner(enemyAttackMessage, 1900)
+      if (shadowAttackMessage) {
+        showBanner(shadowAttackMessage, 1900)
         setTimeout(() => showBanner(`Turno de ${character.name}`), 2000)
       } else {
         showBanner(`Turno de ${character.name}`)
       }
     }
 
-    if (!currentPlayer || !currentEnemy) {
+    if (!currentPlayer || !currentShadow) {
       setTokens(prev => prev.map(t => (t.isEnemy ? t : { ...t, movementUsed: 0, attacked: false })))
       setTurn(t => t + 1)
       showBanner(`Turno de ${character.name}`)
@@ -898,27 +965,55 @@ export default function Arena({ character, onExit }: { character: Character; onE
     }
 
     const isAdjacentToPlayer = (cell: Cell) => footprintDistanceToCell(tokenCells(currentPlayer), cell) === 1
-    const start = { col: currentEnemy.col, row: currentEnemy.row }
-    const fullPath = bfsPathTo(current, currentEnemy.id, start, isAdjacentToPlayer, wallCells)
-    const path = fullPath ? fullPath.slice(0, Math.min(currentEnemy.movement, fullPath.length - 1) + 1) : null
+    const start = { col: currentShadow.col, row: currentShadow.row }
+    const fullPath = bfsPathTo(current, currentShadow.id, start, isAdjacentToPlayer, wallCells)
+    const path = fullPath ? fullPath.slice(0, Math.min(currentShadow.movement, fullPath.length - 1) + 1) : null
 
     if (!path || path.length < 2) {
       finish(path ? path[0] : start)
       return
     }
 
-    animatePath(currentEnemy.id, path, 180, () => finish(path[path.length - 1]))
+    animatePath(currentShadow.id, path, 180, () => finish(path[path.length - 1]))
   }
+
+  // UI de status compartilhada (vista por todo mundo) — jogador e sombra são "a mesma
+  // pessoa", então usam os mesmos atributos completos (`character`); Coração/Estamina/
+  // Alma vêm dos recursos DE VERDADE da ficha (`resources`/`shadowResources`), não de
+  // um número sintético do token.
+  const playerEstamina = resourceValue(resources, 'estamina', Math.max(1, Math.round(character.estamina)))
+  const playerAlma = resourceValue(resources, 'alma', Math.max(1, Math.round(character.alma)))
+  const shadowEstamina = resourceValue(shadowResources, 'estamina', Math.max(1, Math.round(character.estamina)))
+  const shadowAlma = resourceValue(shadowResources, 'alma', Math.max(1, Math.round(character.alma)))
+
+  const partyMembers: PartyMemberStatus[] = [
+    {
+      id: 'player', name: character.name, avatar: character.avatar, atributos: character,
+      vitals: [
+        { key: 'coracao', label: 'Coração', icon: '❤️', emptyIcon: '🤍', current: playerCoracao.current, max: playerCoracao.max, color: 'var(--error)' },
+        { key: 'estamina', label: 'Estamina', icon: '⚡', emptyIcon: '◽', current: playerEstamina.current, max: playerEstamina.max, color: 'var(--gold)' },
+        { key: 'alma', label: 'Alma', icon: '🔮', emptyIcon: '⚪', current: playerAlma.current, max: playerAlma.max, color: 'var(--void-glow)' },
+      ],
+    },
+    {
+      id: 'shadow', name: `Sombra de ${character.name}`, avatar: character.avatar, atributos: character,
+      vitals: [
+        { key: 'coracao', label: 'Coração', icon: '❤️', emptyIcon: '🤍', current: shadowCoracao.current, max: shadowCoracao.max, color: 'var(--error)' },
+        { key: 'estamina', label: 'Estamina', icon: '⚡', emptyIcon: '◽', current: shadowEstamina.current, max: shadowEstamina.max, color: 'var(--gold)' },
+        { key: 'alma', label: 'Alma', icon: '🔮', emptyIcon: '⚪', current: shadowAlma.current, max: shadowAlma.max, color: 'var(--void-glow)' },
+      ],
+    },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="gold-glow" style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: 'clamp(1.4rem, 3vw, 1.9rem)', fontWeight: 900, color: 'var(--text)' }}>
-            Arena de teste — {character.name}
+            Lute contra você mesmo — {character.name}
           </h1>
           <p style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Clique no seu personagem para mover ou atacar. Arraste o mapa pra navegar e use a roda do mouse pra dar zoom.
+            Clique no seu personagem para mover; fique adjacente à sombra pra ver suas ações de ataque. Arraste o mapa pra navegar e use a roda do mouse pra dar zoom.
           </p>
         </div>
         <button type="button" className="hk-btn hk-btn-soul px-4 py-1.5 rounded text-xs shrink-0" onClick={onExit}>
@@ -926,13 +1021,10 @@ export default function Arena({ character, onExit }: { character: Character; onE
         </button>
       </div>
 
-      <div className="ddb-panel p-2 flex items-center gap-4 flex-wrap" style={{ width: 'fit-content' }}>
+      <div className="flex items-center gap-3 flex-wrap">
         <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.78rem', color: 'var(--text)' }}>Turno {turn}</span>
-        <HeartBar label={character.name} hp={player.hp} maxHp={player.maxHp} />
-        <StatLine poder={player.poder} casca={player.casca} estamina={player.estaminaMax} />
-        <HeartBar label="Inimigo" hp={enemy.hp} maxHp={enemy.maxHp} />
-        <StatLine poder={enemy.poder} casca={enemy.casca} estamina={enemy.estaminaMax} />
       </div>
+      <PartyStatusBar members={partyMembers} />
 
       <div className="flex gap-4 flex-wrap items-start">
         <div className="ddb-panel p-3 flex-1" style={{ minWidth: 320, position: 'relative' }}>
@@ -984,87 +1076,32 @@ export default function Arena({ character, onExit }: { character: Character; onE
         className="ddb-panel parchment p-3 flex items-center gap-3 flex-wrap"
         style={{ position: 'sticky', bottom: 12, zIndex: 30 }}
       >
-        {!selectedToken && (
+        {battleOver ? (
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: '0.85rem', color: shadowCoracao.current <= 0 ? 'var(--gold)' : 'var(--error)' }}>
+            {shadowCoracao.current <= 0 ? 'Você venceu! A sombra caiu.' : 'Você foi derrotado pela sua sombra...'}
+          </span>
+        ) : !selectedToken ? (
           <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             Clique no seu personagem para mover ou atacar.
           </span>
-        )}
-
-        {selectedToken && !pendingAttackOption && !selectedAttack && (
-          <>
-            <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Clique numa célula destacada para mover, ou ataque:
-            </span>
-            {ATTACK_OPTIONS.map(option => (
-              <button
-                key={option.id}
-                type="button"
-                className="hk-btn hk-btn-soul px-3 py-1.5 rounded text-xs"
-                onClick={() => handleSelectAttack(option)}
-                disabled={selectedToken.attacked}
-              >
-                {option.label}
-              </button>
-            ))}
-            {selectedToken.attacked && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>(já atacou neste turno)</span>
-            )}
-            <button type="button" className="hk-btn hk-btn-gold px-3 py-1.5 rounded text-xs" onClick={clearSelection}>
-              Cancelar seleção
-            </button>
-          </>
-        )}
-
-        {pendingAttackOption && (() => {
-          const attacker = tokens.find(t => t.id === pendingAttackOption.tokenId)
-          if (!attacker) return null
-          return (
-            <>
-              <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Quanta estamina gastar?
-              </span>
-              {Array.from({ length: 20 }, (_, i) => i + 1)
-                .filter(diceCount => triangularCost(diceCount) <= attacker.estaminaMax)
-                .map(diceCount => {
-                  const cost = triangularCost(diceCount)
-                  return (
-                    <button
-                      key={diceCount}
-                      type="button"
-                      className="hk-btn hk-btn-soul px-3 py-1.5 rounded text-xs"
-                      onClick={() => handleSelectStamina(diceCount)}
-                    >
-                      {cost} {cost === 1 ? 'ponto' : 'pontos'} · {diceCount + attacker.poder} dados
-                    </button>
-                  )
-                })}
-              <button type="button" className="hk-btn hk-btn-gold px-3 py-1.5 rounded text-xs" onClick={() => setPendingAttackOption(null)}>
-                Cancelar
-              </button>
-            </>
-          )
-        })()}
-
-        {selectedAttack && (
-          <>
-            <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Clique no alvo destacado em vermelho para atacar com {selectedAttack.option.label}.
-            </span>
-            <button type="button" className="hk-btn hk-btn-gold px-3 py-1.5 rounded text-xs" onClick={() => setSelectedAttack(null)}>
-              Cancelar
-            </button>
-          </>
-        )}
-
-        <button
-          type="button"
-          className="hk-btn hk-btn-gold px-3 py-1.5 rounded text-xs ml-auto"
-          onClick={handleEndTurn}
-          disabled={isAnimating}
-        >
-          Pular turno
-        </button>
+        ) : selectedToken.id === 'player' ? (
+          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            {isPlayerAdjacentToShadow
+              ? 'Clique numa célula destacada para mover, ou ataque pela barra de ação.'
+              : 'Clique numa célula destacada para mover — fique adjacente à sombra pra atacar.'}
+          </span>
+        ) : null}
       </div>
+
+      {/* Barra de ação — PRIVADA, só o jogador vê. "Cancelar seleção"/"Passar turno"
+          ficam nas pontas, afastados dos ícones de habilidade no meio. */}
+      <ActionBar
+        isMyTurn={!isAnimating && !battleOver}
+        mode="attack"
+        actionCards={actionCards}
+        onCancelSelection={selectedToken?.id === 'player' ? clearSelection : undefined}
+        onEndTurn={handleEndTurn}
+      />
     </div>
   )
 }

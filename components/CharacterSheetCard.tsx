@@ -1,6 +1,6 @@
 'use client'
 
-import { cloneElement, useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import {
   effortCost, fetchMyDiceSkins, updateCharacterItemSlot, updateCharacterResource, updateCharacterSustento,
   type Ability, type Atributos, type CharacterResourceEntry, type GameTrait, type Item, type OwnedDiceSkin,
@@ -10,7 +10,10 @@ import { useAuth } from '@/app/lib/auth-context'
 import { useDiceStageContext } from '@/components/dashboard/DiceStageContext'
 import { DICE_APPEARANCE_DEFAULT, SUCCESS_THRESHOLD } from '@/app/painel/jogo/shared'
 import type { DiceAppearance } from '@/app/lib/dice/diceEngine'
-import { abilityRequiresWeapon, computeRangeDisplay, resolveAbilityEffects, type RollContext } from '@/app/lib/abilityResolver'
+import { abilityRequiresWeapon, computeRangeDisplay, resolveAbilityEffects, type ResolvedEffect, type RollContext } from '@/app/lib/abilityResolver'
+import ActionBar, { type ActionCardSpec } from './ActionBar'
+import PartyStatusBar, { type PartyMemberStatus } from './PartyStatusBar'
+import { HoverTip, PipRow } from './SheetPrimitives'
 
 /**
  * Forma normalizada de dados que tanto a ficha salva (`/painel/personagens/[id]`)
@@ -56,29 +59,14 @@ function fmtAttr(v: number | string) {
   return Number.isInteger(n) ? n.toString() : n.toFixed(1)
 }
 
-// Casca e Saber já tiveram um "Cinto" e "Espaços de Técnica" como estatística
-// secundária (slots de equipamento/técnica), mas nenhum dos dois está em uso —
-// não há mecânica de slots implementada ainda. Não exibir até existir.
-const PRIMARY_ATTRS: Array<[keyof Atributos, string, string]> = [
-  ['poder', 'Força', '👊'],
-  ['graca', 'Graça', '🪶'],
-  ['saber', 'Saber', '📖'],
-  ['casca', 'Casca', '🛡️'],
-]
-
 // Rótulo do atributo pra "Teste de X" no card de habilidade — 'poder' aparece como
-// "Força" aqui (mesmo nome usado em PRIMARY_ATTRS), os demais usam o nome do atributo.
+// "Força" aqui (mesmo nome usado no PartyStatusBar), os demais usam o nome do atributo.
 const ATTR_TEST_LABELS: Record<string, string> = { poder: 'Força', graca: 'Graça', casca: 'Casca', saber: 'Saber' }
 
 // Deslocamento não é mais derivado de Graça — agora é uma base fixa (5),
 // espelhada em Character::DESLOCAMENTO_BASE no backend. Usada só como fallback
 // enquanto o actor_resource "deslocamento" não existir pra esse personagem.
 const DESLOCAMENTO_BASE = 5
-
-const SOCIAL_ATTRS: Array<[keyof Atributos, string, string]> = [
-  ['fofo', 'Fofo', '🐾'],
-  ['assustador', 'Assustador', '🐺'],
-]
 
 const VITALS = [
   { key: 'coracao', label: 'Coração', icon: '❤️', emptyIcon: '🤍', color: 'var(--error)', colorRgb: 'var(--error-rgb)' },
@@ -112,7 +100,7 @@ const ITEM_TYPE_ICON: Record<Item['type'], string> = {
 // Ataque Desarmado é a única habilidade inata real (concedida a todo personagem no
 // backend). Esse fallback só existe pro caso de o personagem ainda não ter sido
 // migrado/backfillado — evita quebrar a ficha antes disso.
-const FALLBACK_UNARMED_ABILITY: Ability = {
+export const FALLBACK_UNARMED_ABILITY: Ability = {
   id: -1, name: 'Ataque Desarmado', slug: 'ataque-desarmado',
   description: 'Ataca o oponente com as mãos nuas. O dano é a quantidade de acertos − Casca do oponente.',
   icon: '👊', is_passive: false, is_hidden: false, display_order: 0, range: null,
@@ -121,54 +109,15 @@ const FALLBACK_UNARMED_ABILITY: Ability = {
   is_bloqueio: false, range_calculation: null, builder_mode: 'advanced',
 }
 
-function findResourceEntry(resources: CharacterResourceEntry[], slug: string | null | undefined): CharacterResourceEntry | null {
+export function findResourceEntry(resources: CharacterResourceEntry[], slug: string | null | undefined): CharacterResourceEntry | null {
   if (!slug) return null
   return resources.find(r => r.resource.slug === slug) ?? null
 }
 
 /** current/max de um recurso pelo slug — cai pro `fallback` (ex: atributo calculado, base fixa) enquanto o personagem não tiver esse actor_resource ainda. */
-function resourceValue(resources: CharacterResourceEntry[], slug: string, fallback: number): { current: number; max: number } {
+export function resourceValue(resources: CharacterResourceEntry[], slug: string, fallback: number): { current: number; max: number } {
   const entry = findResourceEntry(resources, slug)
   return entry ? { current: entry.current, max: entry.base } : { current: fallback, max: fallback }
-}
-
-// Clicável: dispara um Teste do atributo (rola `value` d6, conta sucessos no modal).
-function AttrCard({ icon, label, value, onClick }: { icon: string; label: string; value: number; onClick?: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '0.85rem 0.9rem', background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.18)', borderRadius: 10,
-        cursor: onClick ? 'pointer' : undefined,
-      }}
-    >
-      <div className="flex items-center gap-1.5" style={{ marginBottom: '0.5rem' }}>
-        <span style={{ fontSize: '0.9rem' }}>{icon}</span>
-        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.46rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-          {label}
-        </span>
-      </div>
-      <div style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.7rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>
-        {fmtAttr(value)}
-      </div>
-    </div>
-  )
-}
-
-function IconRow({ icon, label, value }: { icon: string; label: string; value: number }) {
-  return (
-    <div className="flex items-center justify-between gap-2" style={{ padding: '0.55rem 0.75rem', background: 'var(--card)', border: '1px solid rgba(var(--gold-rgb),0.12)', borderRadius: 8 }}>
-      <div className="flex items-center gap-2">
-        <span style={{ fontSize: '0.85rem' }}>{icon}</span>
-        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.54rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-          {label}
-        </span>
-      </div>
-      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>
-        {fmtAttr(value)}
-      </span>
-    </div>
-  )
 }
 
 // Coração/Estamina/Alma/Deslocamento — atual/máximo com pips clicáveis. Controlado
@@ -210,88 +159,6 @@ function VitalBox({ icon, emptyIcon, label, current, max, color, colorRgb, onTog
   )
 }
 
-// Mesma informação do VitalBox (label + atual/máx + pips clicáveis), só que sem
-// ícone e tudo numa única linha — usado no cabeçalho ao lado do avatar, sem card
-// próprio (a "moldura" ali é o cabeçalho inteiro, não cada item individualmente).
-function VitalLine({ icon, emptyIcon, label, current, max, color, onToggle }: {
-  icon: string; emptyIcon: string; label: string; current: number; max: number; color: string
-  onToggle: (next: number) => void
-}) {
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color, width: 68, flexShrink: 0 }}>
-        {label}
-      </span>
-      <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', flexShrink: 0 }}>
-        {current}<span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)' }}>/{max}</span>
-      </span>
-      <div className="flex items-center gap-1 flex-wrap">
-        {Array.from({ length: max }, (_, i) => {
-          const filled = i < current
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onToggle(i + 1 === current ? i : i + 1)}
-              aria-label={`${label} ${i + 1} de ${max}`}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '0.8rem' }}
-            >
-              {filled ? icon : emptyIcon}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// Marcadores simples (círculo cheio/vazio) — usado pro Sustento, Estágio da Fome
-// e Deslocamento no canto superior direito do cabeçalho. Sem `onToggle` vira só
-// leitura (ex: Deslocamento, que não é algo que o jogador marca manualmente).
-function PipRow({ current, max, onToggle, size = '0.8rem', filledChar = '●', emptyChar = '○' }: {
-  current: number; max: number; onToggle?: (next: number) => void; size?: string; filledChar?: string; emptyChar?: string
-}) {
-  return (
-    <div className="flex items-center gap-1" style={{ flexWrap: 'nowrap' }}>
-      {Array.from({ length: max }, (_, i) => {
-        const filled = i < current
-        const color = filled ? 'var(--gold)' : 'rgba(var(--text-rgb),0.25)'
-        const char = filled ? filledChar : emptyChar
-        if (!onToggle) {
-          return <span key={i} style={{ fontSize: size, color, lineHeight: 1 }}>{char}</span>
-        }
-        return (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onToggle(i + 1 === current ? i : i + 1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: size, color }}
-          >
-            {char}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function HoverTip({ children, title, detail }: { children: ReactNode; title: string; detail?: string | null }) {
-  return (
-    <span className="hover-tip" tabIndex={0}>
-      {children}
-      <span className="hover-tip-bubble">
-        <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.62rem', fontWeight: 700, color: 'var(--gold)', display: 'block', marginBottom: detail ? '0.3rem' : 0 }}>
-          {title}
-        </span>
-        {detail && (
-          <span style={{ fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.4, display: 'block' }}>
-            {detail}
-          </span>
-        )}
-      </span>
-    </span>
-  )
-}
 
 // Estágios de fome — índice = nº de marcadores preenchidos (0 = Saciado, 4 = Inanição).
 // O recurso "fome" persiste esse índice como `current` (max sempre 4).
@@ -570,9 +437,9 @@ function EquipmentPanel({ items, poder, onAssignSlot }: {
 // (ver `effortCost` em gameData.ts).
 const EFFORT_LEVELS = [1, 2, 3, 4]
 
-function AbilityCard({
+export function AbilityCard({
   icon, name, tipo, atributo, atributos, resources, resourceEntry, description, custo, ability, itemRef, characterName,
-  minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource, diceModifier = 0, onRoll,
+  minEffortLevel = 1, onEffortUsed, locked, buildAppearances, onSpendResource, diceModifier = 0, onRoll, onResolved,
 }: {
   icon: string; name: string; tipo: string
   atributo: keyof Atributos | null
@@ -605,6 +472,11 @@ function AbilityCard({
    * `onEffortUsed`, que só as ações de mão passam. Usado pra fechar o card aberto
    * na barra de ação depois de rolar. */
   onRoll?: () => void
+  /** Chamado com os efeitos resolvidos (mesmo array que monta o texto do modal),
+   * logo após `resolveAbilityEffects` rodar — quem quiser APLICAR o resultado (ex:
+   * a Arena subtraindo vida/casca de um alvo real) escuta aqui em vez de duplicar a
+   * lógica de rolagem/resolução. A ficha não usa isso (não tem alvo pra aplicar). */
+  onResolved?: (effects: ResolvedEffect[]) => void
 }) {
   const [activeLevel, setActiveLevel] = useState<number | null>(null)
   const { showDiceRoll } = useDiceStageContext()
@@ -638,6 +510,7 @@ function AbilityCard({
 
     const ctx: RollContext = { ...weaponContext, hits: successes }
     const resolvedEffects = resolveAbilityEffects(ability, atributos, resources, ctx)
+    onResolved?.(resolvedEffects)
 
     const lines = []
     if (description) lines.push(description)
@@ -746,7 +619,7 @@ function AbilityCard({
   )
 }
 
-type ResolvedHandAction = {
+export type ResolvedHandAction = {
   key: string
   name: string
   icon: string
@@ -762,9 +635,10 @@ type ResolvedHandAction = {
  * configurável por item no admin — um escudo com espinhos pode conceder tanto
  * "Bloqueio com Escudo" quanto "Ataque com Espinhos" ao mesmo tempo, cada uma com
  * sua própria árvore de Steps resolvida por `resolveAbilityEffects`). Sem item ou
- * item sem `abilities`, cai na habilidade base (ex: Ataque Desarmado).
+ * item sem `abilities`, cai na habilidade base (ex: Ataque Desarmado). Exportada —
+ * a Arena usa o mesmo padrão pra montar as ações reais do jogador e da sombra.
  */
-function resolveHandActions(item: CharacterSheetItem | null, base: Ability, handLabel: string, hand: 'main' | 'off' | 'both'): ResolvedHandAction[] {
+export function resolveHandActions(item: CharacterSheetItem | null, base: Ability, handLabel: string, hand: 'main' | 'off' | 'both'): ResolvedHandAction[] {
   const abilities = item && item.abilities.length > 0 ? item.abilities : [base]
 
   return abilities.map(ability => ({
@@ -808,12 +682,10 @@ export default function CharacterSheetCard({ character }: { character: Character
   const [sustento, setSustento] = useState(character.sustento)
   useEffect(() => setSustento(character.sustento), [character.sustento])
 
-  // Barra de ação: prévia local da barra que vai ser usada nas arenas — mostra os
-  // ÍCONES das habilidades usáveis fixos na parte inferior da tela (sem fundo, no
-  // mesmo nível do antigo botão de teste de dados); clicar num ícone abre o card
-  // cheio (mesmo `AbilityCard` do painel "Ações") centralizado por cima de tudo.
-  const [showActionBar, setShowActionBar] = useState(false)
-  const [openActionCardKey, setOpenActionCardKey] = useState<string | null>(null)
+  // A `ActionBar` é privada (só o dono vê) e só aparece na vez do personagem —
+  // aqui na ficha solo não existe oponente/turno real ainda, então fica sempre
+  // "minha vez". Quando a mesa/arena existir de verdade, isso vira estado real.
+  const isMyTurn = true
 
   function handleResourceToggle(slug: string, next: number) {
     setResources(prev => prev.map(r => (r.resource.slug === slug ? { ...r, current: next } : r)))
@@ -928,6 +800,19 @@ export default function CharacterSheetCard({ character }: { character: Character
   const hunger = fomeEntry ? fomeEntry.current : 0
   const sustentoMax = Math.max(1, character.sustentoMaximo ?? character.sustento)
 
+  const partyMembers: PartyMemberStatus[] = [{
+    id: character.id ?? 'draft',
+    name: character.name,
+    avatar: character.avatar,
+    atributos,
+    vitals: [
+      { key: 'coracao', label: 'Coração', icon: '❤️', emptyIcon: '🤍', current: coracaoVal.current, max: coracaoVal.max, color: 'var(--error)', onToggle: next => handleResourceToggle('coracao', next) },
+      { key: 'alma', label: 'Alma', icon: '🔮', emptyIcon: '⚪', current: almaVal.current, max: almaVal.max, color: 'var(--void-glow)', onToggle: next => handleResourceToggle('alma', next) },
+      { key: 'estamina', label: 'Estamina', icon: '⚡', emptyIcon: '◽', current: estaminaVal.current, max: estaminaVal.max, color: 'var(--gold)', onToggle: next => handleResourceToggle('estamina', next) },
+    ],
+    onAttributeTest: handleAttributeTest,
+  }]
+
   const characterAbilities = character.abilities ?? []
   const unarmedAbility = characterAbilities.find(a => a.slug === 'ataque-desarmado')
     ?? characterAbilities.find(a => a.is_innate)
@@ -950,7 +835,7 @@ export default function CharacterSheetCard({ character }: { character: Character
    * o card cheio em vez de duplicar é o que garante descrição completa e níveis de
    * Esforço funcionando nos dois lugares, sem duplicar a lógica de rolagem.
    */
-  function buildActionCards(): { key: string; icon: string; name: string; disabled: boolean; disabledReason: string | null; node: ReactElement<{ onRoll?: () => void }> }[] {
+  function buildActionCards(): ActionCardSpec[] {
     return [
       ...handActions.map(action => {
         const isAttack = action.tipo === 'Ataque'
@@ -1034,23 +919,11 @@ export default function CharacterSheetCard({ character }: { character: Character
   }
 
   const actionCards = buildActionCards()
-  const openActionCard = actionCards.find(c => c.key === openActionCardKey) ?? null
 
   return (
     <div className="flex flex-col gap-5">
       {/* Botão de teste — dispara o início de turno (por enquanto só restaura a Estamina). */}
       <div className="flex items-center justify-end gap-3">
-        <label className="flex items-center gap-1.5" style={{ cursor: 'pointer', fontFamily: 'var(--font-im-fell)', fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          <input
-            type="checkbox"
-            checked={showActionBar}
-            onChange={e => {
-              setShowActionBar(e.target.checked)
-              if (!e.target.checked) setOpenActionCardKey(null)
-            }}
-          />
-          Exibir barra de ação
-        </label>
         <button
           type="button"
           onClick={handleEndTurn}
@@ -1076,50 +949,10 @@ export default function CharacterSheetCard({ character }: { character: Character
           </>
         )}
       </h1>
-      {/* Cabeçalho — identidade + vitais */}
-      <div className="parchment manuscript-ruled" style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(var(--gold-rgb),0.15)' }}>
-        <div style={{ padding: '1.5rem' }}>
-
-
-          {/* Avatar redondo + vitais (sem ícone, sem card por item) + os 4 atributos
-              primários, todos na mesma linha: [avatar] recursos [Força][Graça][Saber][Casca]. */}
-          <div className="flex items-start gap-5 flex-wrap" style={{ marginBottom: '1rem' }}>
-            <div style={{
-              width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-              border: '2px solid rgba(var(--gold-rgb),0.35)', background: 'var(--bg-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(var(--gold-rgb),0.1)',
-            }}>
-              {character.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={character.avatar} alt={`Avatar de ${character.name}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontFamily: 'var(--font-cinzel-decorative)', fontSize: '1.8rem', color: 'var(--gold)' }}>
-                  {character.name ? character.name.charAt(0).toUpperCase() : '?'}
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2" style={{ flex: '1 1 240px', justifyContent: 'center' }}>
-              <VitalLine icon="❤️" emptyIcon="🤍" label="Coração" current={coracaoVal.current} max={coracaoVal.max} color="var(--error)" onToggle={next => handleResourceToggle('coracao', next)} />
-              <VitalLine icon="🔮" emptyIcon="⚪" label="Alma" current={almaVal.current} max={almaVal.max} color="var(--void-glow)" onToggle={next => handleResourceToggle('alma', next)} />
-              <VitalLine icon="⚡" emptyIcon="◽" label="Estamina" current={estaminaVal.current} max={estaminaVal.max} color="var(--gold)" onToggle={next => handleResourceToggle('estamina', next)} />
-            </div>
-
-            <div className="grid grid-cols-4 gap-2" style={{ flex: '2 1 380px' }}>
-              {PRIMARY_ATTRS.map(([key, label, icon]) => (
-                <AttrCard key={key} icon={icon} label={label} value={atributos[key]} onClick={() => handleAttributeTest(key, label)} />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              {SOCIAL_ATTRS.map(([key, label, icon]) => (
-                <IconRow key={key} icon={icon} label={label} value={atributos[key]} />
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </div>
+      {/* UI de status — COMPARTILHADA (vida/atributos vistos por todo mundo na mesa,
+          não só pelo dono). Na ficha solo, `members` tem 1 item só: o próprio
+          personagem — é só o caso normal de "mesa com 1 jogador". */}
+      <PartyStatusBar members={partyMembers} />
 
       {/* Corpo: três colunas — Atributos | Ações | Inventário/Traços/Flavor */}
       <div className="grid grid-cols-1 lg:grid-cols-[450px_820px_1fr] gap-5">
@@ -1313,59 +1146,10 @@ export default function CharacterSheetCard({ character }: { character: Character
 
       </div>
 
-      {/* Barra de ação — prévia local (a versão de verdade vai morar na arena). Fixa
-          embaixo, acima de tudo, no mesmo nível do antigo botão de teste de dados, sem
-          fundo — só os ícones centralizados. Clicar num ícone abre o `AbilityCard`
-          cheio (mesmo do painel "Ações", com descrição e Esforço) centralizado na tela. */}
-      {showActionBar && (
-        <div
-          style={{
-            position: 'fixed', left: 0, right: 0, bottom: 16, zIndex: 10003,
-            display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem', padding: '0 1rem',
-            pointerEvents: 'none',
-          }}
-        >
-          {actionCards.map(c => (
-            <HoverTip key={c.key} title={c.disabledReason ? `${c.name} — ${c.disabledReason}` : c.name}>
-              <button
-                type="button"
-                onClick={() => setOpenActionCardKey(c.key)}
-                disabled={c.disabled}
-                className="action-bar-icon-btn"
-                style={{
-                  pointerEvents: 'auto',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 46, height: 46, borderRadius: '50%', fontSize: '1.3rem', cursor: c.disabled ? 'not-allowed' : 'pointer',
-                  border: '1px solid rgba(var(--gold-rgb),0.35)', background: 'rgba(var(--bg-rgb),0.85)',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                  filter: c.disabled ? 'grayscale(1)' : 'none',
-                  opacity: c.disabled ? 0.4 : 1,
-                }}
-              >
-                {c.icon}
-              </button>
-            </HoverTip>
-          ))}
-        </div>
-      )}
-
-      {/* Card aberto a partir da barra de ação — perto da base, logo acima dos ícones.
-          `onRoll` fecha o card assim que a habilidade é rolada (clone só pra esse
-          card do modal, o mesmo `node` do painel "Ações" não ganha esse fechamento). */}
-      {openActionCard && (
-        <div
-          onClick={() => setOpenActionCardKey(null)}
-          className="action-card-modal-backdrop"
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10002, display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)', paddingBottom: 96,
-          }}
-        >
-          <div className="action-card-pop-in" onClick={e => e.stopPropagation()}>
-            {cloneElement(openActionCard.node, { onRoll: () => setOpenActionCardKey(null) })}
-          </div>
-        </div>
-      )}
+      {/* Barra de ação — PRIVADA (só o dono vê, só na vez dele). Componente à parte
+          pra poder ser reaproveitado em qualquer lugar que precisar dela (arena/mesa
+          depois, não só a ficha solo). */}
+      <ActionBar isMyTurn={isMyTurn} mode="attack" actionCards={actionCards} />
     </div>
   )
 }

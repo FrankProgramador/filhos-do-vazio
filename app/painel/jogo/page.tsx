@@ -66,8 +66,8 @@ export default function JogoPage() {
 
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
           <button type="button" onClick={() => setMode('solo')} className="ddb-action-card" style={{ textAlign: 'left' }}>
-            <p style={{ color: 'var(--text)', fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem' }}>Treino (IA)</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Arena solo contra um inimigo controlado pelo turno automático.</p>
+            <p style={{ color: 'var(--text)', fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem' }}>Lute contra você mesmo</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Enfrente sua própria sombra — uma cópia sua, controlada por uma IA básica.</p>
           </button>
           <button type="button" onClick={() => setMode('mp-lobby')} className="ddb-action-card void-accent" style={{ textAlign: 'left' }}>
             <p style={{ color: 'var(--text)', fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem' }}>Multiplayer (mano a mano)</p>
